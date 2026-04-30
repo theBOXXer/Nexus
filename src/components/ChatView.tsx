@@ -275,7 +275,7 @@ function MessageBubble({ message }: { message: Message }) {
           className={`relative text-[15px] leading-relaxed whitespace-pre-wrap break-words px-4 py-3 ${
             isUser
               ? 'bg-slate-700/60 text-slate-200 rounded-2xl rounded-br-sm'
-              : 'bg-slate-800/60 text-slate-200 rounded-2xl rounded-bl-sm'
+              : 'bg-slate-800/60 text-slate-200 rounded-2xl rounded-bl-sm pr-10'
           }`}
         >
           {isUser ? (
@@ -289,7 +289,7 @@ function MessageBubble({ message }: { message: Message }) {
           {!isUser && (
             <button
               onClick={handleCopy}
-              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-white transition-all p-1 rounded-md hover:bg-slate-700/50"
+              className="absolute top-2 right-2 text-slate-500 hover:text-white transition-colors p-1 rounded-md hover:bg-slate-700/50"
               title="Copy"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
