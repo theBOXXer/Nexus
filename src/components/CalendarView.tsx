@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, MessageSquare, X, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MessageSquare, Plus } from 'lucide-react';
 import { Chat, Category, chats } from '../lib/api';
 
 interface Props {
@@ -25,12 +25,13 @@ function toKey(d: Date) {
 
 export default function CalendarView({ chats, categories, onSelectChat, onNewChat, updateChatLocally, onRefresh }: Props) {
   const [month, setMonth] = useState(startOfMonth(new Date()));
-  const [rangeStart, setRangeStart] = useState<Date | null>(null);
-  const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
-  const [dragging, setDragging] = useState(false);
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const [dragChatId, setDragChatId] = useState<string | null>(null);
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
+
+  const allChats = useMemo(() => {
+    return [...chats].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [chats]);
 
   const chatsByDay = useMemo(() => {
     const map = new Map<string, Chat[]>();
@@ -53,40 +54,8 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
   for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(month.getFullYear(), month.getMonth(), d));
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const selectedChats = useMemo(() => {
-    if (!rangeStart) return [] as Chat[];
-    const end = rangeEnd || rangeStart;
-    const [a, b] = rangeStart <= end ? [rangeStart, end] : [end, rangeStart];
-    const startDay = new Date(a.getFullYear(), a.getMonth(), a.getDate()).getTime();
-    const endDay = new Date(b.getFullYear(), b.getMonth(), b.getDate(), 23, 59, 59).getTime();
-    return chats.filter((c) => {
-      const t = new Date(c.created_at).getTime();
-      return t >= startDay && t <= endDay;
-    });
-  }, [rangeStart, rangeEnd, chats]);
-
-  function isInRange(d: Date) {
-    if (!rangeStart) return false;
-    const end = rangeEnd || rangeStart;
-    const [a, b] = rangeStart <= end ? [rangeStart, end] : [end, rangeStart];
-    return d >= new Date(a.getFullYear(), a.getMonth(), a.getDate()) &&
-      d <= new Date(b.getFullYear(), b.getMonth(), b.getDate());
-  }
-
-  function onMouseDown(d: Date) {
-    setRangeStart(d);
-    setRangeEnd(d);
-    setDragging(true);
-  }
-  function onMouseEnter(d: Date) {
-    if (dragging) setRangeEnd(d);
-  }
-  function onMouseUp() {
-    setDragging(false);
-  }
   function onMouseEnterDay(d: Date) {
     setHoveredDay(toKey(d));
-    if (dragging) setRangeEnd(d);
   }
 
   function onDragStartChat(e: React.DragEvent, chatId: string) {
@@ -120,7 +89,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
   const monthLabel = month.toLocaleString(undefined, { month: 'long', year: 'numeric' });
 
   return (
-    <div className="flex-1 flex bg-slate-950 overflow-hidden" onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
+    <div className="flex-1 flex bg-slate-950 overflow-hidden">
       <div className="flex-1 flex flex-col min-w-0">
         <div className="h-14 border-b border-slate-800 flex items-center justify-between px-5 bg-slate-900/40">
           <h2 className="font-semibold text-white">Calendar</h2>
@@ -148,7 +117,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
         </div>
 
         <div className="flex-1 overflow-auto p-5">
-          <p className="text-xs text-slate-500 mb-3">Click and drag across days to select a range. Drag chats to move them between dates.</p>
+          <p className="text-xs text-slate-500 mb-3">Drag chats between days to reassign dates. Hover a day for the + button.</p>
           <div className="grid grid-cols-7 gap-1 mb-1">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
               <div key={d} className="text-xs font-semibold text-slate-500 uppercase tracking-wider py-2 text-center">
@@ -160,29 +129,25 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
             {cells.map((d, i) => {
               if (!d) return <div key={i} className="aspect-square" />;
               const dayChats = chatsByDay.get(toKey(d)) || [];
-              const inRange = isInRange(d);
               const isToday = sameDay(d, new Date());
               return (
                 <div
                   key={i}
-                  onMouseDown={() => onMouseDown(d)}
                   onMouseEnter={() => onMouseEnterDay(d)}
                   onMouseLeave={() => setHoveredDay(null)}
                   onDragOver={(e) => onDragOverDay(e, d)}
                   onDragLeave={() => setDragOverDay(null)}
                   onDrop={(e) => onDropChatOnDay(e, d)}
-                  className={`aspect-square rounded-lg border p-2 flex flex-col cursor-pointer transition-all relative ${
+                  className={`aspect-square rounded-lg border p-2 flex flex-col transition-all relative ${
                     dragOverDay === toKey(d)
                       ? 'border-emerald-500/60 bg-emerald-500/10 scale-[1.03] shadow-lg shadow-emerald-500/10'
-                      : inRange
-                        ? 'border-sky-500/60 bg-sky-500/10'
-                        : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/60'
+                      : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/60'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span
                       className={`text-xs font-medium ${
-                        isToday ? 'text-sky-400' : inRange ? 'text-sky-200' : 'text-slate-300'
+                        isToday ? 'text-sky-400' : 'text-slate-300'
                       }`}
                     >
                       {d.getDate()}
@@ -201,7 +166,6 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                         <div
                           key={c.id}
                           draggable
-                          onPointerDown={(e) => e.stopPropagation()}
                           onDragStart={(e) => onDragStartChat(e, c.id)}
                           onDragEnd={onDragEndChat}
                           onClick={(e) => {
@@ -241,40 +205,15 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
       </div>
 
       <div className="w-80 border-l border-slate-800 bg-slate-900/40 flex flex-col">
-        <div className="h-14 border-b border-slate-800 flex items-center justify-between px-5">
-          <span className="font-semibold text-white text-sm">
-            {rangeStart ? (
-              <>
-                {rangeStart.toLocaleDateString()}
-                {rangeEnd && !sameDay(rangeStart, rangeEnd) && ` — ${rangeEnd.toLocaleDateString()}`}
-              </>
-            ) : (
-              'Select a range'
-            )}
-          </span>
-          {rangeStart && (
-            <button
-              onClick={() => {
-                setRangeStart(null);
-                setRangeEnd(null);
-              }}
-              className="text-slate-500 hover:text-white"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+        <div className="h-14 border-b border-slate-800 flex items-center px-5">
+          <span className="font-semibold text-white text-sm">All Chats</span>
         </div>
         <div className="flex-1 overflow-y-auto p-3">
-          {!rangeStart && (
-            <div className="text-center text-xs text-slate-500 mt-8 px-4">
-              Drag across calendar dates to see chats from that range.
-            </div>
-          )}
-          {rangeStart && selectedChats.length === 0 && (
-            <div className="text-center text-xs text-slate-500 mt-8">No chats in this range.</div>
+          {allChats.length === 0 && (
+            <div className="text-center text-xs text-slate-500 mt-8">No chats yet.</div>
           )}
           <div className="space-y-1.5">
-            {selectedChats.map((c) => {
+            {allChats.map((c) => {
               const cat = c.category_id ? catById.get(c.category_id) : null;
               const isDragging = dragChatId === c.id;
               return (
