@@ -258,7 +258,10 @@ async function createMessage(req: Request, env: Env, userId: string): Promise<Re
 
 const MODEL_MAP: Record<string, 'openai' | 'anthropic' | 'deepseek'> = {
   'gpt-4o': 'openai', 'gpt-4o-mini': 'openai', 'gpt-4-turbo': 'openai', 'gpt-3.5-turbo': 'openai',
-  'claude-opus-4-5': 'anthropic', 'claude-sonnet-4-5': 'anthropic', 'claude-3-5-haiku-latest': 'anthropic',
+  'claude-opus-4-7': 'anthropic', 'claude-opus-4-6': 'anthropic',
+  'claude-sonnet-4-6': 'anthropic', 'claude-sonnet-4-5': 'anthropic',
+  'claude-3-7-sonnet-20250219': 'anthropic', 'claude-3-opus-20240229': 'anthropic',
+  'claude-3-5-haiku-20241022': 'anthropic',
   'deepseek-chat': 'deepseek', 'deepseek-reasoner': 'deepseek',
 };
 
