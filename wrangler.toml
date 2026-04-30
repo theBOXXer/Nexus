@@ -5,7 +5,3 @@ pages_build_output_dir = "dist"
 binding = "DB"
 database_name = "nexus-db"
 database_id = "d7cda549-134f-4764-851d-bc4d2dda95a9"
-
-[vars]
-VITE_SUPABASE_URL = "https://ymsrvyldjmdcnqfecunn.supabase.co"
-VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inltc3J2eWxkam1kY25xZmVjdW5uIiwicm9zZSI6ImFub24iLCJpYXQiOjE3Nzc1MjgzMDgsImV4cCI6MjA5MzEwNDMwOH0.7e7AQPKEV9We5637VAu8JVr4TrwYbeCn-BbwyTNdPf4"
