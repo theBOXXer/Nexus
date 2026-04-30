@@ -40,17 +40,20 @@ export default function Sidebar({
   }
 
   async function deleteCategory(id: string) {
-    await supabase.from('categories').delete().eq('id', id);
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (error) console.error('deleteCategory:', error);
   }
 
   async function renameCategory(id: string) {
     if (!editName.trim()) return;
-    await supabase.from('categories').update({ name: editName.trim() }).eq('id', id);
+    const { error } = await supabase.from('categories').update({ name: editName.trim() }).eq('id', id);
+    if (error) console.error('renameCategory:', error);
     setEditing(null);
   }
 
   async function archiveChat(id: string) {
-    await supabase.from('chats').update({ archived: true }).eq('id', id);
+    const { error } = await supabase.from('chats').update({ archived: true }).eq('id', id);
+    if (error) console.error('archiveChat:', error);
   }
 
   function handleDragStart(e: React.DragEvent, chatId: string) {

@@ -7,12 +7,12 @@ export function useChatData(userId: string | null) {
   const [loading, setLoading] = useState(true);
 
   const chats = useMemo(
-    () => allChats.filter((c) => !c.archived),
+    () => allChats.filter((c) => c.archived !== true),
     [allChats],
   );
 
   const archivedChats = useMemo(
-    () => allChats.filter((c) => c.archived),
+    () => allChats.filter((c) => c.archived === true),
     [allChats],
   );
 
