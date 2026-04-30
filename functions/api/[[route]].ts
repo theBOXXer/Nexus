@@ -169,6 +169,7 @@ async function updateCategory(req: Request, env: Env, userId: string, catId: str
 }
 
 async function deleteCategory(_req: Request, env: Env, userId: string, catId: string): Promise<Response> {
+  await env.DB.prepare('UPDATE chats SET archived = 1, category_id = NULL WHERE category_id = ? AND user_id = ?').bind(catId, userId).run();
   const result = await env.DB.prepare('DELETE FROM categories WHERE id = ? AND user_id = ?').bind(catId, userId).run();
   if (result.changes === 0) return error('Not found', 404);
   return json({ success: true });
