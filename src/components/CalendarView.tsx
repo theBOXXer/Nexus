@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, MessageSquare, Plus, X } from 'lucide-react';
-import { Chat, Category, chats } from '../lib/api';
+import { Chat, Category, chats as chatsApi } from '../lib/api';
 
 interface Props {
   chats: Chat[];
@@ -83,7 +83,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
     if (!chatId) return;
     const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString();
     updateChatLocally(chatId, { created_at: iso });
-    await chats.update(chatId, { created_at: iso });
+    await chatsApi.update(chatId, { created_at: iso });
   }
 
   const monthLabel = month.toLocaleString(undefined, { month: 'long', year: 'numeric' });
