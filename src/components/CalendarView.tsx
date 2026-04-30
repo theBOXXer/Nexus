@@ -1,14 +1,12 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, MessageSquare, X, Plus } from 'lucide-react';
-import { Chat, Category, chats } from '../lib/api';
+import { Chat, Category } from '../lib/api';
 
 interface Props {
   chats: Chat[];
   categories: Category[];
   onSelectChat: (id: string) => void;
   onNewChat: (date: Date) => void;
-  updateChatLocally: (chatId: string, updates: Partial<Chat>) => void;
-  onRefresh: () => void;
 }
 
 function startOfMonth(d: Date) {
@@ -23,14 +21,12 @@ function toKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-export default function CalendarView({ chats, categories, onSelectChat, onNewChat, updateChatLocally, onRefresh }: Props) {
+export default function CalendarView({ chats, categories, onSelectChat, onNewChat }: Props) {
   const [month, setMonth] = useState(startOfMonth(new Date()));
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
   const [dragging, setDragging] = useState(false);
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
-  const [dragChatId, setDragChatId] = useState<string | null>(null);
-  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
 
   const chatsByDay = useMemo(() => {
     const map = new Map<string, Chat[]>();
@@ -89,29 +85,6 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
     if (dragging) setRangeEnd(d);
   }
 
-  function onDragStartChat(e: React.DragEvent, chatId: string) {
-    e.dataTransfer.setData('text/chat', chatId);
-    e.dataTransfer.effectAllowed = 'move';
-    setDragChatId(chatId);
-  }
-
-  function onDragEndChat() {
-    setDragChatId(null);
-    setDragOverDay(null);
-  }
-
-  async function onDropChatOnDay(e: React.DragEvent, d: Date) {
-    e.preventDefault();
-    setDragOverDay(null);
-    setDragChatId(null);
-    const chatId = e.dataTransfer.getData('text/chat');
-    if (!chatId) return;
-    const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString();
-    updateChatLocally(chatId, { created_at: iso });
-    await chats.update(chatId, { created_at: iso });
-    onRefresh();
-  }
-
   const monthLabel = month.toLocaleString(undefined, { month: 'long', year: 'numeric' });
 
   return (
@@ -143,7 +116,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
         </div>
 
         <div className="flex-1 overflow-auto p-5">
-          <p className="text-xs text-slate-500 mb-3">Click and drag across days to select a range. Drag chats between days to reassign dates.</p>
+          <p className="text-xs text-slate-500 mb-3">Click and drag across days to select a date range and view chats created in that period.</p>
           <div className="grid grid-cols-7 gap-1 mb-1">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
               <div key={d} className="text-xs font-semibold text-slate-500 uppercase tracking-wider py-2 text-center">
@@ -162,15 +135,11 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                   key={i}
                   onMouseDown={() => onMouseDown(d)}
                   onMouseEnter={() => onMouseEnterDay(d)}
-                  onMouseLeave={() => { setHoveredDay(null); setDragOverDay(null); }}
-                  onDragOver={(e) => { e.preventDefault(); setDragOverDay(toKey(d)); }}
-                  onDrop={(e) => onDropChatOnDay(e, d)}
-                  className={`aspect-square rounded-lg border p-2 flex flex-col cursor-pointer transition-all relative ${
-                    dragOverDay === toKey(d)
-                      ? 'border-emerald-500/60 bg-emerald-500/10 scale-[1.02]'
-                      : inRange
-                        ? 'border-sky-500/60 bg-sky-500/10'
-                        : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/60'
+                  onMouseLeave={() => setHoveredDay(null)}
+                  className={`aspect-square rounded-lg border p-2 flex flex-col cursor-pointer transition-colors relative ${
+                    inRange
+                      ? 'border-sky-500/60 bg-sky-500/10'
+                      : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/60'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -190,21 +159,14 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                   <div className="mt-1 space-y-0.5 overflow-hidden">
                     {dayChats.slice(0, 2).map((c) => {
                       const cat = c.category_id ? catById.get(c.category_id) : null;
-                      const isDragging = dragChatId === c.id;
                       return (
                         <div
                           key={c.id}
-                          draggable
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onDragStart={(e) => onDragStartChat(e, c.id)}
-                          onDragEnd={onDragEndChat}
                           onClick={(e) => {
                             e.stopPropagation();
                             onSelectChat(c.id);
                           }}
-                          className={`text-[10px] truncate px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-300 hover:bg-slate-700 flex items-center gap-1 transition-opacity cursor-grab active:cursor-grabbing ${
-                            isDragging ? 'opacity-30' : ''
-                          }`}
+                          className="text-[10px] truncate px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-300 hover:bg-slate-700 flex items-center gap-1"
                         >
                           {cat && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cat.color }} />}
                           <span className="truncate">{c.title}</span>
@@ -270,17 +232,11 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
           <div className="space-y-1.5">
             {selectedChats.map((c) => {
               const cat = c.category_id ? catById.get(c.category_id) : null;
-              const isDragging = dragChatId === c.id;
               return (
                 <button
                   key={c.id}
-                  draggable
-                  onDragStart={(e) => onDragStartChat(e, c.id)}
-                  onDragEnd={onDragEndChat}
                   onClick={() => onSelectChat(c.id)}
-                  className={`w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/60 transition-all group cursor-grab active:cursor-grabbing ${
-                    isDragging ? 'opacity-30' : ''
-                  }`}
+                  className="w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/60 transition-colors group"
                 >
                   <div className="flex items-start gap-2">
                     <MessageSquare className="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0" />
