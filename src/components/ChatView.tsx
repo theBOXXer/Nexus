@@ -31,6 +31,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     }
     setSending(false);
     setError(null);
+    shouldScrollRef.current = true;
     let cancelled = false;
     messages.list(chat.id).then((data) => {
       if (!cancelled) setMsgs(data);
