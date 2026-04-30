@@ -40,7 +40,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
       if (!cancelled) setMsgs(data);
     });
     return () => { cancelled = true; };
-  }, [chat]);
+  }, [chat?.id]);
 
   useEffect(() => {
     const el = scrollRef.current;
