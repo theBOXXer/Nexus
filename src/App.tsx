@@ -137,6 +137,8 @@ function App() {
           onNewChat={handleNewChat}
           userEmail={session.email}
           onSignOut={handleSignOut}
+          onRefresh={refresh}
+          updateChatLocally={updateChatLocally}
         />
 
         {showSettings ? (

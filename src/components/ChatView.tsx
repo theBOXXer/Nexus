@@ -14,7 +14,10 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!chat) {
@@ -36,6 +39,28 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     if (!chat) return;
     updateChatLocally(chat.id, { model });
     await chats.update(chat.id, { model });
+  }
+
+  function startRename() {
+    if (!chat) return;
+    setTitleDraft(chat.title);
+    setEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.focus(), 50);
+  }
+
+  async function commitRename() {
+    if (!chat || !titleDraft.trim()) {
+      setEditingTitle(false);
+      return;
+    }
+    const newTitle = titleDraft.trim();
+    updateChatLocally(chat.id, { title: newTitle });
+    setEditingTitle(false);
+    await chats.update(chat.id, { title: newTitle });
+  }
+
+  function cancelRename() {
+    setEditingTitle(false);
   }
 
   async function sendMessage() {
@@ -97,7 +122,27 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
       <div className="h-14 border-b border-slate-800 flex items-center justify-between px-5 bg-slate-900/40 backdrop-blur">
         <div className="flex items-center gap-2 min-w-0">
           <Hash className="w-4 h-4 text-slate-500 flex-shrink-0" />
-          <span className="font-semibold text-white truncate">{chat.title}</span>
+          {editingTitle && chat ? (
+            <input
+              ref={titleInputRef}
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename();
+                if (e.key === 'Escape') cancelRename();
+              }}
+              className="bg-slate-800 border border-sky-500/50 text-white text-sm font-semibold px-2 py-0.5 rounded outline-none min-w-0"
+            />
+          ) : (
+            <span
+              onClick={startRename}
+              className="font-semibold text-white truncate cursor-pointer hover:text-sky-300 transition-colors"
+              title="Click to rename"
+            >
+              {chat.title}
+            </span>
+          )}
           {category && (
             <span
               className="text-xs px-2 py-0.5 rounded-full border"

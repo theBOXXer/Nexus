@@ -10,6 +10,8 @@ interface Props {
   onNewChat: (categoryId: string | null) => void;
   userEmail: string;
   onSignOut: () => void;
+  onRefresh: () => void;
+  updateChatLocally: (chatId: string, updates: Partial<Chat>) => void;
 }
 
 export default function Sidebar({
@@ -20,6 +22,8 @@ export default function Sidebar({
   onNewChat,
   userEmail,
   onSignOut,
+  onRefresh,
+  updateChatLocally,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<string | null>(null);
@@ -43,7 +47,9 @@ export default function Sidebar({
   }
 
   async function archiveChat(id: string) {
+    updateChatLocally(id, { archived: true });
     await chats.update(id, { archived: true });
+    onRefresh();
   }
 
   function handleDragStart(e: React.DragEvent, chatId: string) {
