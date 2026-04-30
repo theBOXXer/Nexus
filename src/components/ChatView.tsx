@@ -5,9 +5,10 @@ import { Chat, Message, Category, MODELS, messages, chats, llm } from '../lib/ap
 interface Props {
   chat: Chat | null;
   category: Category | null;
+  onRefresh: () => void;
 }
 
-export default function ChatView({ chat, category }: Props) {
+export default function ChatView({ chat, category, onRefresh }: Props) {
   const [msgs, setMsgs] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -33,6 +34,7 @@ export default function ChatView({ chat, category }: Props) {
   async function changeModel(model: string) {
     if (!chat) return;
     await chats.update(chat.id, { model });
+    onRefresh();
   }
 
   async function sendMessage() {

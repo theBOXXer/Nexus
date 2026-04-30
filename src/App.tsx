@@ -147,7 +147,7 @@ function App() {
           />
         ) : (
           <>
-            {tab === 'chat' && <ChatView chat={activeChat} category={activeCategory} />}
+            {tab === 'chat' && <ChatView chat={activeChat} category={activeCategory} onRefresh={refresh} />}
             {tab === 'calendar' && (
               <CalendarView chats={chatList} categories={categories} onSelectChat={handleSelectChat} />
             )}
