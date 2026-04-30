@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, MessageSquare, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MessageSquare, Plus, X } from 'lucide-react';
 import { Chat, Category, chats } from '../lib/api';
 
 interface Props {
@@ -28,6 +28,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const [dragChatId, setDragChatId] = useState<string | null>(null);
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const allChats = useMemo(() => {
     return [...chats].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -83,7 +84,6 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
     const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString();
     updateChatLocally(chatId, { created_at: iso });
     await chats.update(chatId, { created_at: iso });
-    onRefresh();
   }
 
   const monthLabel = month.toLocaleString(undefined, { month: 'long', year: 'numeric' });
@@ -117,7 +117,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
         </div>
 
         <div className="flex-1 overflow-auto p-5">
-          <p className="text-xs text-slate-500 mb-3">Drag chats between days to reassign dates. Hover a day for the + button.</p>
+          <p className="text-xs text-slate-500 mb-3">Click a day to view its chats. Drag chats between days to reassign dates. Hover for + button.</p>
           <div className="grid grid-cols-7 gap-1 mb-1">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
               <div key={d} className="text-xs font-semibold text-slate-500 uppercase tracking-wider py-2 text-center">
@@ -138,10 +138,13 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                   onDragOver={(e) => onDragOverDay(e, d)}
                   onDragLeave={() => setDragOverDay(null)}
                   onDrop={(e) => onDropChatOnDay(e, d)}
-                  className={`aspect-square rounded-lg border p-2 flex flex-col transition-all relative ${
+                  onClick={() => setSelectedDay(selectedDay === toKey(d) ? null : toKey(d))}
+                  className={`aspect-square rounded-lg border p-2 flex flex-col cursor-pointer transition-all relative ${
                     dragOverDay === toKey(d)
                       ? 'border-emerald-500/60 bg-emerald-500/10 scale-[1.03] shadow-lg shadow-emerald-500/10'
-                      : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/60'
+                      : selectedDay === toKey(d)
+                        ? 'border-sky-500/60 bg-sky-500/10'
+                        : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/60'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -205,60 +208,76 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
       </div>
 
       <div className="w-80 border-l border-slate-800 bg-slate-900/40 flex flex-col">
-        <div className="h-14 border-b border-slate-800 flex items-center px-5">
-          <span className="font-semibold text-white text-sm">All Chats</span>
+        <div className="h-14 border-b border-slate-800 flex items-center justify-between px-5">
+          <span className="font-semibold text-white text-sm">
+            {selectedDay ? new Date(selectedDay).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'All Chats'}
+          </span>
+          {selectedDay && (
+            <button onClick={() => setSelectedDay(null)} className="text-slate-500 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto p-3">
-          {allChats.length === 0 && (
-            <div className="text-center text-xs text-slate-500 mt-8">No chats yet.</div>
-          )}
-          <div className="space-y-1.5">
-            {allChats.map((c) => {
-              const cat = c.category_id ? catById.get(c.category_id) : null;
-              const isDragging = dragChatId === c.id;
+          {(() => {
+            const panelChats = selectedDay ? (chatsByDay.get(selectedDay) || []) : allChats;
+            if (panelChats.length === 0) {
               return (
-                <button
-                  key={c.id}
-                  draggable
-                  onDragStart={(e) => onDragStartChat(e, c.id)}
-                  onDragEnd={onDragEndChat}
-                  onClick={() => onSelectChat(c.id)}
-                  className={`w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/60 transition-all group cursor-grab active:cursor-grabbing ${
-                    isDragging ? 'opacity-30 scale-95' : ''
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    <MessageSquare className="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-white font-medium truncate">{c.title}</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        {cat && (
-                          <span
-                            className="text-[10px] px-1.5 py-0.5 rounded-full border"
-                            style={{
-                              color: cat.color,
-                              borderColor: cat.color + '40',
-                              background: cat.color + '10',
-                            }}
-                          >
-                            {cat.name}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-slate-500">
-                          {new Date(c.created_at).toLocaleString([], {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </button>
+                <div className="text-center text-xs text-slate-500 mt-8">
+                  {selectedDay ? 'No chats on this day.' : 'Click a day to view its chats.'}
+                </div>
               );
-            })}
-          </div>
+            }
+            return (
+              <div className="space-y-1.5">
+                {panelChats.map((c) => {
+                  const cat = c.category_id ? catById.get(c.category_id) : null;
+                  const isDragging = dragChatId === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      draggable
+                      onDragStart={(e) => onDragStartChat(e, c.id)}
+                      onDragEnd={onDragEndChat}
+                      onClick={() => onSelectChat(c.id)}
+                      className={`w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/60 transition-all group cursor-grab active:cursor-grabbing ${
+                        isDragging ? 'opacity-30 scale-95' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <MessageSquare className="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-white font-medium truncate">{c.title}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {cat && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded-full border"
+                                style={{
+                                  color: cat.color,
+                                  borderColor: cat.color + '40',
+                                  background: cat.color + '10',
+                                }}
+                              >
+                                {cat.name}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-500">
+                              {new Date(c.created_at).toLocaleString([], {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
