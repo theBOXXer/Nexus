@@ -224,7 +224,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
       {hoveredId && (
         <button
           onClick={copyFloating}
-          style={{ position: 'fixed', right: 28, top: '50%', transform: 'translateY(-50%)', zIndex: 50 }}
+          style={{ position: 'fixed', right: 'calc(50% - 352px)', top: '50%', transform: 'translateY(-50%)', zIndex: 50 }}
           className="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-700/50 bg-slate-800/80 backdrop-blur shadow-lg"
           title="Copy"
         >
