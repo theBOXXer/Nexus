@@ -162,9 +162,15 @@ async function createCategory(req: Request, env: Env, userId: string): Promise<R
 }
 
 async function updateCategory(req: Request, env: Env, userId: string, catId: string): Promise<Response> {
-  const { name } = await req.json() as { name?: string };
-  if (!name) return error('Name required');
-  const result = await env.DB.prepare('UPDATE categories SET name = ? WHERE id = ? AND user_id = ?').bind(name.trim(), catId, userId).run();
+  const body = await req.json() as { name?: string; position?: number };
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  if (body.name !== undefined) { sets.push('name = ?'); vals.push(body.name.trim()); }
+  if (body.position !== undefined) { sets.push('position = ?'); vals.push(body.position); }
+  if (sets.length === 0) return error('No valid fields');
+  vals.push(catId, userId);
+  const result = await env.DB.prepare(`UPDATE categories SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`)
+    .bind(...vals.map(v => v === undefined ? null : v) as unknown[]).run();
   if (result.changes === 0) return error('Not found', 404);
   return json({ success: true });
 }

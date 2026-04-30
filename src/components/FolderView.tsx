@@ -1,27 +1,51 @@
 import { useState } from 'react';
-import { Folder, FolderOpen, MessageSquare, Inbox } from 'lucide-react';
-import { Chat, Category, chats } from '../lib/api';
+import { Folder, FolderOpen, MessageSquare, Inbox, GripVertical } from 'lucide-react';
+import { Chat, Category, chats, categories } from '../lib/api';
 
 interface Props {
   chats: Chat[];
   categories: Category[];
   onSelectChat: (id: string) => void;
+  onRefresh: () => void;
+  updateChatLocally: (chatId: string, updates: Partial<Chat>) => void;
 }
 
-export default function FolderView({ chats, categories, onSelectChat }: Props) {
+export default function FolderView({ chats, categories: catsList, onSelectChat, onRefresh, updateChatLocally }: Props) {
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [dragOverCat, setDragOverCat] = useState<string | null>(null);
+  const [catDragIdx, setCatDragIdx] = useState<number | null>(null);
 
-  function onDragStart(e: React.DragEvent, chatId: string) {
-    e.dataTransfer.setData('chatId', chatId);
+  function onDragStartChat(e: React.DragEvent, chatId: string) {
+    e.dataTransfer.setData('text/plain', chatId);
     e.dataTransfer.effectAllowed = 'move';
   }
 
-  async function onDrop(e: React.DragEvent, categoryId: string | null) {
+  async function onDropChat(e: React.DragEvent, categoryId: string | null) {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(null);
-    const chatId = e.dataTransfer.getData('chatId');
+    const chatId = e.dataTransfer.getData('text/plain');
     if (!chatId) return;
+    updateChatLocally(chatId, { category_id: categoryId });
     await chats.update(chatId, { category_id: categoryId });
+    onRefresh();
+  }
+
+  function onDragStartCat(e: React.DragEvent, idx: number, catId: string) {
+    e.dataTransfer.setData('text/category', catId);
+    e.dataTransfer.effectAllowed = 'move';
+    setCatDragIdx(idx);
+  }
+
+  async function onDropCat(e: React.DragEvent, targetIdx: number) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverCat(null);
+    setCatDragIdx(null);
+    const catId = e.dataTransfer.getData('text/category');
+    if (!catId) return;
+    await categories.update(catId, { position: targetIdx });
+    onRefresh();
   }
 
   const buckets: { id: string | null; name: string; color: string; chats: Chat[]; icon: typeof Folder }[] = [
@@ -32,7 +56,7 @@ export default function FolderView({ chats, categories, onSelectChat }: Props) {
       chats: chats.filter((c) => !c.category_id),
       icon: Inbox,
     },
-    ...categories.map((cat) => ({
+    ...catsList.map((cat) => ({
       id: cat.id,
       name: cat.name,
       color: cat.color,
@@ -45,30 +69,37 @@ export default function FolderView({ chats, categories, onSelectChat }: Props) {
     <div className="flex-1 flex flex-col bg-slate-950 overflow-hidden">
       <div className="h-14 border-b border-slate-800 flex items-center justify-between px-5 bg-slate-900/40">
         <h2 className="font-semibold text-white">Folders</h2>
-        <span className="text-xs text-slate-500">Drag chats between folders to organize</span>
+        <span className="text-xs text-slate-500">Drag chats between folders · Drag categories to reorder</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-w-7xl mx-auto">
-          {buckets.map((b) => {
-            const Icon = dragOver === (b.id || '_unfiled') ? FolderOpen : b.icon;
-            const active = dragOver === (b.id || '_unfiled');
+          {buckets.map((b, idx) => {
+            const bucketId = b.id || '_unfiled';
+            const Icon = dragOver === bucketId ? FolderOpen : b.icon;
+            const active = dragOver === bucketId;
+            const catActive = dragOverCat === b.id;
             return (
               <div
-                key={b.id || '_unfiled'}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOver(b.id || '_unfiled');
-                }}
+                key={bucketId}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(bucketId); }}
                 onDragLeave={() => setDragOver(null)}
-                onDrop={(e) => onDrop(e, b.id)}
+                onDrop={(e) => onDropChat(e, b.id)}
                 className={`rounded-2xl border-2 transition-all ${
-                  active
-                    ? 'border-sky-500/60 bg-sky-500/5'
-                    : 'border-slate-800 bg-slate-900/40'
+                  active ? 'border-sky-500/60 bg-sky-500/5' : 'border-slate-800 bg-slate-900/40'
                 }`}
               >
-                <div className="p-4 border-b border-slate-800/60 flex items-center gap-3">
+                <div
+                  draggable={!!b.id}
+                  onDragStart={b.id ? (e) => onDragStartCat(e, idx, b.id) : undefined}
+                  onDragOver={b.id ? (e) => { e.preventDefault(); e.stopPropagation(); setDragOverCat(b.id); } : undefined}
+                  onDragLeave={b.id ? () => setDragOverCat(null) : undefined}
+                  onDrop={b.id ? (e) => onDropCat(e, idx) : undefined}
+                  className={`p-4 border-b border-slate-800/60 flex items-center gap-3 transition-colors ${
+                    catActive ? 'bg-emerald-500/10' : ''
+                  } ${b.id ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                >
+                  {b.id && <GripVertical className="w-4 h-4 text-slate-600 flex-shrink-0" />}
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: b.color + '20', color: b.color }}
@@ -79,6 +110,11 @@ export default function FolderView({ chats, categories, onSelectChat }: Props) {
                     <div className="text-white font-semibold truncate">{b.name}</div>
                     <div className="text-xs text-slate-500">{b.chats.length} {b.chats.length === 1 ? 'chat' : 'chats'}</div>
                   </div>
+                  {b.id && catDragIdx !== null && (
+                    <div className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${catActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-500'}`}>
+                      {catActive ? 'Release to reorder' : 'Drop zone'}
+                    </div>
+                  )}
                 </div>
                 <div className="p-3 space-y-1.5 min-h-[100px]">
                   {b.chats.length === 0 && (
@@ -90,7 +126,7 @@ export default function FolderView({ chats, categories, onSelectChat }: Props) {
                     <div
                       key={c.id}
                       draggable
-                      onDragStart={(e) => onDragStart(e, c.id)}
+                      onDragStart={(e) => onDragStartChat(e, c.id)}
                       onClick={() => onSelectChat(c.id)}
                       className="group flex items-center gap-2 p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/70 cursor-grab active:cursor-grabbing transition-colors"
                     >

@@ -43,7 +43,7 @@ export default function Sidebar({
 
   async function renameCategory(id: string) {
     if (!editName.trim()) return;
-    await categories.update(id, editName.trim());
+    await categories.update(id, { name: editName.trim() });
     setEditing(null);
   }
 

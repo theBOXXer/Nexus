@@ -154,7 +154,7 @@ function App() {
               <CalendarView chats={chatList} categories={categories} onSelectChat={handleSelectChat} />
             )}
             {tab === 'folders' && (
-              <FolderView chats={chatList} categories={categories} onSelectChat={handleSelectChat} />
+              <FolderView chats={chatList} categories={categories} onSelectChat={handleSelectChat} onRefresh={refresh} updateChatLocally={updateChatLocally} />
             )}
           </>
         )}
