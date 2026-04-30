@@ -21,12 +21,12 @@ export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-950 overflow-hidden">
-      <div className="h-14 border-b border-slate-800 flex items-center justify-between px-5 bg-slate-900/40">
-        <h2 className="font-semibold text-white">Settings</h2>
+    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 overflow-hidden">
+      <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40">
+        <h2 className="font-semibold text-slate-900 dark:text-white">Settings</h2>
         <button
           onClick={onClose}
-          className="text-slate-400 hover:text-white transition-colors"
+          className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
           title="Close"
         >
           <X className="w-5 h-5" />
@@ -40,8 +40,8 @@ export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
               <Archive className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Archived Chats</h3>
-              <p className="text-sm text-slate-400">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Archived Chats</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Chats you've archived. Restore them or delete permanently.
               </p>
             </div>
@@ -50,8 +50,8 @@ export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
           {archivedChats.length === 0 ? (
             <div className="text-center py-16">
               <Archive className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-              <p className="text-slate-500 text-sm">No archived chats</p>
-              <p className="text-slate-600 text-xs mt-1">
+              <p className="text-slate-400 dark:text-slate-500 text-sm">No archived chats</p>
+              <p className="text-slate-400 dark:text-slate-600 text-xs mt-1">
                 Click the archive icon on any chat in the sidebar to move it here.
               </p>
             </div>
@@ -60,14 +60,14 @@ export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
               {archivedChats.map((chat) => (
                 <div
                   key={chat.id}
-                  className="flex items-center gap-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-colors"
+                  className="flex items-center gap-3 p-4 rounded-xl bg-slate-100/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                 >
                   <Archive className="w-4 h-4 text-amber-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-slate-200 truncate">
+                    <div className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
                       {chat.title}
                     </div>
-                    <div className="text-xs text-slate-500 mt-0.5">
+                    <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                       Archived · {chat.model} ·{' '}
                       {new Date(chat.updated_at).toLocaleDateString(undefined, {
                         month: 'short',

@@ -89,27 +89,27 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
   const monthLabel = month.toLocaleString(undefined, { month: 'long', year: 'numeric' });
 
   return (
-    <div className="flex-1 flex bg-slate-950 overflow-hidden">
+    <div className="flex-1 flex bg-white dark:bg-slate-950 overflow-hidden">
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="h-14 border-b border-slate-800 flex items-center justify-between px-5 bg-slate-900/40">
-          <h2 className="font-semibold text-white">Calendar</h2>
+        <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40">
+          <h2 className="font-semibold text-slate-900 dark:text-white">Calendar</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
-              className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center"
+              className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="text-sm font-medium text-white min-w-[140px] text-center">{monthLabel}</div>
+            <div className="text-sm font-medium text-slate-900 dark:text-white min-w-[140px] text-center">{monthLabel}</div>
             <button
               onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
-              className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center"
+              className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
             <button
               onClick={() => setMonth(startOfMonth(new Date()))}
-              className="ml-2 text-xs px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800"
+              className="ml-2 text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
             >
               Today
             </button>
@@ -117,10 +117,10 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
         </div>
 
         <div className="flex-1 overflow-auto p-5">
-          <p className="text-xs text-slate-500 mb-3">Click a day to view its chats. Drag chats between days to reassign dates. Hover for + button.</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">Click a day to view its chats. Drag chats between days to reassign dates. Hover for + button.</p>
           <div className="grid grid-cols-7 gap-1 mb-1">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-              <div key={d} className="text-xs font-semibold text-slate-500 uppercase tracking-wider py-2 text-center">
+              <div key={d} className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider py-2 text-center">
                 {d}
               </div>
             ))}
@@ -144,13 +144,13 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                       ? 'border-emerald-500/60 bg-emerald-500/10 scale-[1.03] shadow-lg shadow-emerald-500/10'
                       : selectedDay === toKey(d)
                         ? 'border-sky-500/60 bg-sky-500/10'
-                        : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/60'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span
                       className={`text-xs font-medium ${
-                        isToday ? 'text-sky-400' : 'text-slate-300'
+                        isToday ? 'text-sky-400' : 'text-slate-600 dark:text-slate-300'
                       }`}
                     >
                       {d.getDate()}
@@ -175,7 +175,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                             e.stopPropagation();
                             onSelectChat(c.id);
                           }}
-                          className={`text-[10px] truncate px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-300 hover:bg-slate-700 flex items-center gap-1 transition-all cursor-grab active:cursor-grabbing ${
+                          className={`text-[10px] truncate px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 flex items-center gap-1 transition-all cursor-grab active:cursor-grabbing ${
                             isDragging ? 'opacity-30 scale-95' : ''
                           }`}
                         >
@@ -185,7 +185,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                       );
                     })}
                     {dayChats.length > 2 && (
-                      <div className="text-[10px] text-slate-500 px-1.5">+{dayChats.length - 2} more</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 px-1.5">+{dayChats.length - 2} more</div>
                     )}
                   </div>
                   {hoveredDay === toKey(d) && (
@@ -207,13 +207,13 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
         </div>
       </div>
 
-      <div className="w-80 border-l border-slate-800 bg-slate-900/40 flex flex-col">
-        <div className="h-14 border-b border-slate-800 flex items-center justify-between px-5">
-          <span className="font-semibold text-white text-sm">
+      <div className="w-80 border-l border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 flex flex-col">
+        <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5">
+          <span className="font-semibold text-slate-900 dark:text-white text-sm">
             {selectedDay ? new Date(selectedDay).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'All Chats'}
           </span>
           {selectedDay && (
-            <button onClick={() => setSelectedDay(null)} className="text-slate-500 hover:text-white">
+            <button onClick={() => setSelectedDay(null)} className="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -223,7 +223,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
             const panelChats = selectedDay ? (chatsByDay.get(selectedDay) || []) : allChats;
             if (panelChats.length === 0) {
               return (
-                <div className="text-center text-xs text-slate-500 mt-8">
+                <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
                   {selectedDay ? 'No chats on this day.' : 'Click a day to view its chats.'}
                 </div>
               );
@@ -240,14 +240,14 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                       onDragStart={(e) => onDragStartChat(e, c.id)}
                       onDragEnd={onDragEndChat}
                       onClick={() => onSelectChat(c.id)}
-                      className={`w-full text-left p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/60 transition-all group cursor-grab active:cursor-grabbing ${
+                      className={`w-full text-left p-3 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition-all group cursor-grab active:cursor-grabbing ${
                         isDragging ? 'opacity-30 scale-95' : ''
                       }`}
                     >
                       <div className="flex items-start gap-2">
-                        <MessageSquare className="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                        <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 mt-0.5 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm text-white font-medium truncate">{c.title}</div>
+                          <div className="text-sm text-slate-900 dark:text-white font-medium truncate">{c.title}</div>
                           <div className="flex items-center gap-2 mt-1">
                             {cat && (
                               <span
@@ -261,7 +261,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                                 {cat.name}
                               </span>
                             )}
-                            <span className="text-[10px] text-slate-500">
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
                               {new Date(c.created_at).toLocaleString([], {
                                 month: 'short',
                                 day: 'numeric',

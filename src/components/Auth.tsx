@@ -31,22 +31,22 @@ export default function Auth({ onAuth }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-sky-500/20">
             <MessageSquare className="w-7 h-7 text-white" strokeWidth={2.5} />
           </div>
-          <h1 className="text-2xl font-semibold text-white">Welcome to Nexus</h1>
-          <p className="text-slate-400 text-sm mt-1">Your unified AI chat workspace</p>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Welcome to Nexus</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Your unified AI chat workspace</p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
-          <div className="flex gap-1 p-1 bg-slate-800/50 rounded-lg mb-6">
+        <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl">
+          <div className="flex gap-1 p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-lg mb-6">
             <button
               onClick={() => setMode('signin')}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                mode === 'signin' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+                mode === 'signin' ? 'bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
               Sign In
@@ -54,7 +54,7 @@ export default function Auth({ onAuth }: Props) {
             <button
               onClick={() => setMode('signup')}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                mode === 'signup' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+                mode === 'signup' ? 'bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
               Sign Up
@@ -63,25 +63,25 @@ export default function Auth({ onAuth }: Props) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Email</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500"
+                className="w-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500"
                 placeholder="you@example.com"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Password</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Password</label>
               <input
                 type="password"
                 required
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500"
+                className="w-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500"
                 placeholder="at least 6 characters"
               />
             </div>

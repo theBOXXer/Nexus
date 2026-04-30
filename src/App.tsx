@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MessageSquare, Calendar, FolderTree, Settings as SettingsIcon } from 'lucide-react';
+import { MessageSquare, Calendar, FolderTree, Settings as SettingsIcon, Sun, Moon } from 'lucide-react';
 import { auth, clearToken, setToken, chats } from './lib/api';
 import { useChatData } from './hooks/useChatData';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import Auth from './components/Auth';
 import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
@@ -88,10 +89,23 @@ function App() {
     setActiveChatId(null);
   }
 
+  function ThemeToggle() {
+    const { theme, toggle } = useTheme();
+    return (
+      <button
+        onClick={toggle}
+        className="flex items-center gap-2 px-3.5 h-8 rounded-lg text-sm font-medium transition-all text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+      </button>
+    );
+  }
+
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-slate-500 text-sm">Loading...</div>
+      <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
+        <div className="text-slate-400 dark:text-slate-500 text-sm">Loading...</div>
       </div>
     );
   }
@@ -105,8 +119,9 @@ function App() {
   ];
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 text-white overflow-hidden">
-      <div className="h-12 border-b border-slate-800 bg-slate-900/60 backdrop-blur flex items-center px-4 gap-1 flex-shrink-0">
+    <ThemeProvider>
+    <div className="h-screen flex flex-col bg-white dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden">
+      <div className="h-12 border-b border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 backdrop-blur flex items-center px-4 gap-1 flex-shrink-0">
         {tabs.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;
@@ -116,8 +131,8 @@ function App() {
               onClick={() => { setTab(t.id); setShowSettings(false); }}
               className={`flex items-center gap-2 px-3.5 h-8 rounded-lg text-sm font-medium transition-all ${
                 active
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -126,12 +141,13 @@ function App() {
           );
         })}
         <div className="flex-1" />
+        <ThemeToggle />
         <button
           onClick={() => setShowSettings((v) => !v)}
           className={`flex items-center gap-2 px-3.5 h-8 rounded-lg text-sm font-medium transition-all ${
             showSettings
-              ? 'bg-slate-800 text-white shadow-sm'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
           }`}
           title="Settings"
         >
@@ -172,6 +188,7 @@ function App() {
         )}
       </div>
     </div>
+    </ThemeProvider>
   );
 }
 

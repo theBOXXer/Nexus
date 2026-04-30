@@ -99,10 +99,10 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-950 overflow-hidden">
-      <div className="h-14 border-b border-slate-800 flex items-center justify-between px-5 bg-slate-900/40">
-        <h2 className="font-semibold text-white">Folders</h2>
-        <span className="text-xs text-slate-500">Drag chats between folders · Drag categories to reorder</span>
+    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 overflow-hidden">
+      <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40">
+        <h2 className="font-semibold text-slate-900 dark:text-white">Folders</h2>
+        <span className="text-xs text-slate-400 dark:text-slate-500">Drag chats between folders · Drag categories to reorder</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
@@ -119,7 +119,7 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
                 onDragLeave={() => setDragOver(null)}
                 onDrop={(e) => onDropChat(e, b.id)}
                 className={`rounded-2xl border-2 transition-all ${
-                  active ? 'border-sky-500/60 bg-sky-500/5' : 'border-slate-800 bg-slate-900/40'
+                  active ? 'border-sky-500/60 bg-sky-500/5' : 'border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40'
                 }`}
               >
                 <div
@@ -128,11 +128,11 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
                   onDragOver={b.id ? (e) => { e.preventDefault(); e.stopPropagation(); setDragOverCat(b.id); } : undefined}
                   onDragLeave={b.id ? () => setDragOverCat(null) : undefined}
                   onDrop={b.id ? (e) => onDropCat(e, idx) : undefined}
-                  className={`p-4 border-b border-slate-800/60 flex items-center gap-3 transition-colors ${
+                  className={`p-4 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center gap-3 transition-colors ${
                     catActive ? 'bg-emerald-500/10' : ''
                   } ${b.id ? 'cursor-grab active:cursor-grabbing' : ''}`}
                 >
-                  {b.id && <GripVertical className="w-4 h-4 text-slate-600 flex-shrink-0" />}
+                  {b.id && <GripVertical className="w-4 h-4 text-slate-400 dark:text-slate-600 flex-shrink-0" />}
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: b.color + '20', color: b.color }}
@@ -151,19 +151,19 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
                           if (e.key === 'Escape') setEditingCat(null);
                         }}
                         onClick={(e) => e.stopPropagation()}
-                        className="bg-slate-800 text-white text-sm font-semibold px-1 rounded outline-none w-full"
+                        className="bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold px-1 rounded outline-none w-full"
                       />
                     ) : (
                       <div
                         onClick={b.id ? (e) => { e.stopPropagation(); startRename(b.id!, b.name); } : undefined}
-                        className={`text-white font-semibold truncate ${b.id ? 'cursor-pointer hover:text-sky-300 transition-colors' : ''}`}
+                        className={`text-slate-900 dark:text-white font-semibold truncate ${b.id ? 'cursor-pointer hover:text-sky-300 transition-colors' : ''}`}
                         title={b.id ? 'Click to rename' : undefined}
                       >
                         {b.name}
                       </div>
                     )}
                     <div className="flex items-center gap-2 mt-1">
-                      <div className="text-xs text-slate-500">{b.chats.length} {b.chats.length === 1 ? 'chat' : 'chats'}</div>
+                      <div className="text-xs text-slate-400 dark:text-slate-500">{b.chats.length} {b.chats.length === 1 ? 'chat' : 'chats'}</div>
                       {b.id && (
                         <div ref={colorPickerCat === b.id ? pickerRef : undefined} className="relative">
                           <button
@@ -173,7 +173,7 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
                             title="Change color"
                           />
                           {colorPickerCat === b.id && (
-                            <div className="absolute top-full left-0 mt-2 bg-slate-800 border border-slate-700 rounded-xl p-2.5 shadow-2xl z-50 flex flex-wrap gap-1.5 w-[152px]">
+                            <div className="absolute top-full left-0 mt-2 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 shadow-2xl z-50 flex flex-wrap gap-1.5 w-[152px]">
                               {CATEGORY_COLORS.map(c => (
                                 <button
                                   key={c}
@@ -189,14 +189,14 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
                     </div>
                   </div>
                   {b.id && catDragIdx !== null && (
-                    <div className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${catActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-500'}`}>
+                    <div className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${catActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}>
                       {catActive ? 'Release to reorder' : 'Drop zone'}
                     </div>
                   )}
                 </div>
                 <div className="p-3 space-y-1.5 min-h-[100px]">
                   {b.chats.length === 0 && (
-                    <div className="text-center text-xs text-slate-600 py-6 italic">
+                    <div className="text-center text-xs text-slate-400 dark:text-slate-600 py-6 italic">
                       Drop chats here
                     </div>
                   )}
@@ -206,12 +206,12 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
                       draggable
                       onDragStart={(e) => onDragStartChat(e, c.id)}
                       onClick={() => onSelectChat(c.id)}
-                      className="group flex items-center gap-2 p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/70 cursor-grab active:cursor-grabbing transition-colors"
+                      className="group flex items-center gap-2 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-800/70 cursor-grab active:cursor-grabbing transition-colors"
                     >
-                      <MessageSquare className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                      <MessageSquare className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-slate-200 truncate">{c.title}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">
+                        <div className="text-sm text-slate-700 dark:text-slate-200 truncate">{c.title}</div>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                           {new Date(c.updated_at).toLocaleDateString()} · {c.model}
                         </div>
                       </div>

@@ -174,13 +174,13 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
   if (!chat) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-950">
+      <div className="flex-1 flex items-center justify-center bg-white dark:bg-slate-950">
         <div className="text-center max-w-md px-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500/20 to-emerald-500/20 border border-slate-800 flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500/20 to-emerald-500/20 border border-slate-200 dark:border-slate-800 flex items-center justify-center mx-auto mb-4">
             <Sparkles className="w-8 h-8 text-sky-400" />
           </div>
-          <h2 className="text-xl font-semibold text-white mb-2">Start a conversation</h2>
-          <p className="text-slate-400 text-sm">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Start a conversation</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
             Create a new chat or select one from the sidebar. Organize chats into categories and switch between AI models per conversation.
           </p>
         </div>
@@ -191,10 +191,10 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const currentModel = MODELS.find((m) => m.id === chat.model);
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-950 min-w-0">
-      <div className="h-14 border-b border-slate-800 flex items-center justify-between px-5 bg-slate-900/40 backdrop-blur">
+    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 min-w-0">
+      <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40 backdrop-blur">
         <div className="flex items-center gap-2 min-w-0">
-          <Hash className="w-4 h-4 text-slate-500 flex-shrink-0" />
+          <Hash className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
           {editingTitle && chat ? (
             <input
               ref={titleInputRef}
@@ -205,12 +205,12 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
                 if (e.key === 'Enter') commitRename();
                 if (e.key === 'Escape') cancelRename();
               }}
-              className="bg-slate-800 border border-sky-500/50 text-white text-sm font-semibold px-2 py-0.5 rounded outline-none min-w-0"
+              className="bg-slate-200 dark:bg-slate-800 border border-sky-500/50 text-slate-900 dark:text-white text-sm font-semibold px-2 py-0.5 rounded outline-none min-w-0"
             />
           ) : (
             <span
               onClick={startRename}
-              className="font-semibold text-white truncate cursor-pointer hover:text-sky-300 transition-colors"
+              className="font-semibold text-slate-900 dark:text-white truncate cursor-pointer hover:text-sky-300 transition-colors"
               title="Click to rename"
             >
               {chat.title}
@@ -228,7 +228,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               {category.name}
             </span>
           )}
-          <div className="flex items-center gap-1.5 text-xs text-slate-400">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
             {editingDate ? (
               <input
                 type="date"
@@ -240,7 +240,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
                   if (e.key === 'Enter') commitDate();
                   if (e.key === 'Escape') cancelDate();
                 }}
-                className="bg-slate-800 border border-sky-500/50 text-white text-xs px-2 py-0.5 rounded outline-none"
+                className="bg-slate-200 dark:bg-slate-800 border border-sky-500/50 text-slate-900 dark:text-white text-xs px-2 py-0.5 rounded outline-none"
               />
             ) : (
               <button
@@ -259,7 +259,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
         <select
           value={chat.model}
           onChange={(e) => changeModel(e.target.value)}
-          className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+          className="bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
         >
           {MODELS.map((m) => (
             <option key={m.id} value={m.id}>
@@ -272,12 +272,12 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
         {msgs.length === 0 && (
           <div className="max-w-2xl mx-auto mt-12 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-400 mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 mb-4">
               <Bot className="w-3.5 h-3.5 text-emerald-400" />
               {currentModel?.provider} · {currentModel?.label}
             </div>
-            <h3 className="text-2xl font-semibold text-white mb-2">How can I help you today?</h3>
-            <p className="text-slate-400 text-sm">Ask anything, or try switching models for different perspectives.</p>
+            <h3 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">How can I help you today?</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Ask anything, or try switching models for different perspectives.</p>
           </div>
         )}
 
@@ -290,7 +290,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
                 <Bot className="w-4 h-4 text-white" />
               </div>
-              <div className="flex items-center gap-2 text-slate-400 text-sm pt-1.5">
+              <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm pt-1.5">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Thinking...
               </div>
@@ -310,16 +310,16 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
           onMouseEnter={handleBtnEnter}
           onMouseLeave={handleBtnLeave}
           style={{ position: 'fixed', right: 'calc(50% - 368px)', top: '50%', transform: 'translateY(-50%)', zIndex: 50 }}
-          className="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-700/50 bg-slate-800/80 backdrop-blur shadow-lg"
+          className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-300/50 dark:hover:bg-slate-700/50 bg-slate-200/80 dark:bg-slate-800/80 backdrop-blur shadow-lg"
           title="Copy"
         >
           {copiedId === hoveredId ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
         </button>
       )}
 
-      <div className="p-4 border-t border-slate-800 bg-slate-900/40">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40">
         <div className="max-w-3xl mx-auto">
-          <div className="relative bg-slate-900 border border-slate-800 rounded-2xl focus-within:border-sky-500/50 focus-within:ring-2 focus-within:ring-sky-500/20 transition-all">
+          <div className="relative bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus-within:border-sky-500/50 focus-within:ring-2 focus-within:ring-sky-500/20 transition-all">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -331,7 +331,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               }}
               rows={1}
               placeholder={`Message ${currentModel?.label}...`}
-              className="w-full bg-transparent text-white placeholder-slate-500 px-4 py-3 pr-12 resize-none focus:outline-none max-h-40"
+              className="w-full bg-transparent text-slate-900 dark:text-white placeholder-slate-500 px-4 py-3 pr-12 resize-none focus:outline-none max-h-40"
               style={{ minHeight: '48px' }}
             />
             <button
@@ -342,7 +342,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               <Send className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-xs text-slate-600 mt-2 text-center">Shift + Enter for newline · Enter to send</p>
+          <p className="text-xs text-slate-400 dark:text-slate-600 mt-2 text-center">Shift + Enter for newline · Enter to send</p>
         </div>
       </div>
     </div>
@@ -356,10 +356,10 @@ function MessageBubble({ message, onHover, onLeave }: { message: Message; onHove
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
         className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-          isUser ? 'bg-slate-700' : 'bg-gradient-to-br from-sky-500 to-emerald-500'
+          isUser ? 'bg-slate-300 dark:bg-slate-700' : 'bg-gradient-to-br from-sky-500 to-emerald-500'
         }`}
       >
-        {isUser ? <User className="w-4 h-4 text-slate-200" /> : <Bot className="w-4 h-4 text-white" />}
+        {isUser ? <User className="w-4 h-4 text-slate-700 dark:text-slate-200" /> : <Bot className="w-4 h-4 text-white" />}
       </div>
       <div
         className={`min-w-0 max-w-[75%] ${isUser ? 'items-end' : ''}`}
@@ -367,20 +367,20 @@ function MessageBubble({ message, onHover, onLeave }: { message: Message; onHove
         onMouseLeave={isUser ? undefined : onLeave}
       >
         <div className={`flex items-center gap-2 mb-1 ${isUser ? 'flex-row-reverse' : ''}`}>
-          <span className="text-sm font-semibold text-white">{isUser ? 'You' : 'Assistant'}</span>
+          <span className="text-sm font-semibold text-slate-900 dark:text-white">{isUser ? 'You' : 'Assistant'}</span>
           {message.model && !isUser && (
-            <span className="text-xs text-slate-500">{message.model}</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">{message.model}</span>
           )}
-          <span className="text-xs text-slate-600">
+          <span className="text-xs text-slate-400 dark:text-slate-600">
             {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
         {isUser ? (
-          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-700/60 text-slate-200 rounded-2xl rounded-br-sm px-4 py-3">
+          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-300/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 rounded-2xl rounded-br-sm px-4 py-3">
             {message.content}
           </div>
         ) : (
-          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-800/60 text-slate-200 rounded-2xl rounded-bl-sm px-4 py-3">
+          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-200/60 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 rounded-2xl rounded-bl-sm px-4 py-3">
             <div
               className="markdown-content"
               dangerouslySetInnerHTML={{ __html: marked.parse(message.content) as string }}
