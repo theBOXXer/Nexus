@@ -271,31 +271,27 @@ function MessageBubble({ message }: { message: Message }) {
             {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
-        <div
-          className={`relative text-[15px] leading-relaxed whitespace-pre-wrap break-words px-4 py-3 ${
-            isUser
-              ? 'bg-slate-700/60 text-slate-200 rounded-2xl rounded-br-sm'
-              : 'bg-slate-800/60 text-slate-200 rounded-2xl rounded-bl-sm pr-10'
-          }`}
-        >
-          {isUser ? (
-            message.content
-          ) : (
-            <div
-              className="markdown-content"
-              dangerouslySetInnerHTML={{ __html: marked.parse(message.content) as string }}
-            />
-          )}
-          {!isUser && (
+        {isUser ? (
+          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-700/60 text-slate-200 rounded-2xl rounded-br-sm px-4 py-3">
+            {message.content}
+          </div>
+        ) : (
+          <div className="relative">
+            <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-800/60 text-slate-200 rounded-2xl rounded-bl-sm px-4 py-3 pr-10">
+              <div
+                className="markdown-content"
+                dangerouslySetInnerHTML={{ __html: marked.parse(message.content) as string }}
+              />
+            </div>
             <button
               onClick={handleCopy}
-              className="absolute top-2 right-2 text-slate-500 hover:text-white transition-colors p-1 rounded-md hover:bg-slate-700/50"
+              className="absolute right-[-36px] top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors p-1 rounded-md hover:bg-slate-700/50"
               title="Copy"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
