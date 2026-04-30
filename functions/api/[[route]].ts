@@ -3,6 +3,7 @@ interface Env {
   JWT_SECRET: string;
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
+  DEEPSEEK_API_KEY?: string;
 }
 
 interface JWTPayload {
@@ -255,9 +256,10 @@ async function createMessage(req: Request, env: Env, userId: string): Promise<Re
 
 // ─── LLM Chat ────────────────────────────────────────────────────────────────
 
-const MODEL_MAP: Record<string, 'openai' | 'anthropic'> = {
+const MODEL_MAP: Record<string, 'openai' | 'anthropic' | 'deepseek'> = {
   'gpt-4o': 'openai', 'gpt-4o-mini': 'openai', 'gpt-4-turbo': 'openai', 'gpt-3.5-turbo': 'openai',
   'claude-opus-4-5': 'anthropic', 'claude-sonnet-4-5': 'anthropic', 'claude-3-5-haiku-latest': 'anthropic',
+  'deepseek-chat': 'deepseek', 'deepseek-reasoner': 'deepseek',
 };
 
 async function handleLLMChat(req: Request, env: Env): Promise<Response> {
@@ -276,6 +278,19 @@ async function handleLLMChat(req: Request, env: Env): Promise<Response> {
       body: JSON.stringify({ model, messages }),
     });
     if (!res.ok) return error(`OpenAI: ${await res.text()}`, 502);
+    const data = await res.json() as { choices: { message: { content: string } }[] };
+    return json({ content: data.choices[0].message.content });
+  }
+
+  if (provider === 'deepseek') {
+    const key = env.DEEPSEEK_API_KEY;
+    if (!key) return error('DEEPSEEK_API_KEY not configured', 500);
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model, messages }),
+    });
+    if (!res.ok) return error(`DeepSeek: ${await res.text()}`, 502);
     const data = await res.json() as { choices: { message: { content: string } }[] };
     return json({ content: data.choices[0].message.content });
   }

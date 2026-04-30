@@ -124,6 +124,8 @@ export const MODELS = [
   { id: 'claude-opus-4-5', label: 'Claude Opus 4.5', provider: 'Anthropic' },
   { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5', provider: 'Anthropic' },
   { id: 'claude-3-5-haiku-latest', label: 'Claude 3.5 Haiku', provider: 'Anthropic' },
+  { id: 'deepseek-chat', label: 'DeepSeek V3', provider: 'DeepSeek' },
+  { id: 'deepseek-reasoner', label: 'DeepSeek R1', provider: 'DeepSeek' },
 ] as const;
 
 export const CATEGORY_COLORS = [
