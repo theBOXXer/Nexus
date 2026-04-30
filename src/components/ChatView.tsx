@@ -27,6 +27,8 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
       setMsgs([]);
       return;
     }
+    setSending(false);
+    setError(null);
     let cancelled = false;
     messages.list(chat.id).then((data) => {
       if (!cancelled) setMsgs(data);
