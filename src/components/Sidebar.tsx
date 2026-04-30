@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, MessageSquare, Folder, Trash2, Pencil, LogOut } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, MessageSquare, Folder, Archive, Pencil, Trash2, LogOut } from 'lucide-react';
 import { Category, Chat, supabase, CATEGORY_COLORS } from '../lib/supabase';
 
 interface Props {
@@ -49,8 +49,8 @@ export default function Sidebar({
     setEditing(null);
   }
 
-  async function deleteChat(id: string) {
-    await supabase.from('chats').delete().eq('id', id);
+  async function archiveChat(id: string) {
+    await supabase.from('chats').update({ archived: true }).eq('id', id);
   }
 
   function handleDragStart(e: React.DragEvent, chatId: string) {
@@ -88,11 +88,12 @@ export default function Sidebar({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            deleteChat(chat.id);
+            archiveChat(chat.id);
           }}
-          className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-opacity"
+          className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-amber-400 transition-opacity"
+          title="Archive"
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Archive className="w-3.5 h-3.5" />
         </button>
       </div>
     );

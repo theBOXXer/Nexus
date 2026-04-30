@@ -20,6 +20,7 @@ export type Chat = {
   category_id: string | null;
   title: string;
   model: string;
+  archived: boolean;
   created_at: string;
   updated_at: string;
 };

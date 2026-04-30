@@ -1,10 +1,20 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase, Category, Chat } from '../lib/supabase';
 
 export function useChatData(userId: string | null) {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [allChats, setAllChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const chats = useMemo(
+    () => allChats.filter((c) => !c.archived),
+    [allChats],
+  );
+
+  const archivedChats = useMemo(
+    () => allChats.filter((c) => c.archived),
+    [allChats],
+  );
 
   const refresh = useCallback(async () => {
     if (!userId) return;
@@ -13,7 +23,7 @@ export function useChatData(userId: string | null) {
       supabase.from('chats').select('*').order('updated_at', { ascending: false }),
     ]);
     if (catRes.data) setCategories(catRes.data as Category[]);
-    if (chatRes.data) setChats(chatRes.data as Chat[]);
+    if (chatRes.data) setAllChats(chatRes.data as Chat[]);
     setLoading(false);
   }, [userId]);
 
@@ -32,5 +42,5 @@ export function useChatData(userId: string | null) {
     };
   }, [userId, refresh]);
 
-  return { categories, chats, loading, refresh };
+  return { categories, chats, archivedChats, loading, refresh };
 }

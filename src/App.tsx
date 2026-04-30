@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MessageSquare, Calendar, FolderTree } from 'lucide-react';
+import { MessageSquare, Calendar, FolderTree, Settings as SettingsIcon } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { useChatData } from './hooks/useChatData';
 import Auth from './components/Auth';
@@ -7,6 +7,7 @@ import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
 import CalendarView from './components/CalendarView';
 import FolderView from './components/FolderView';
+import Settings from './components/Settings';
 
 type Tab = 'chat' | 'calendar' | 'folders';
 
@@ -15,6 +16,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('chat');
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -35,7 +37,7 @@ function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const { categories, chats } = useChatData(session?.userId ?? null);
+  const { categories, chats, archivedChats, refresh } = useChatData(session?.userId ?? null);
 
   const activeChat = useMemo(
     () => chats.find((c) => c.id === activeChatId) || null,
@@ -103,7 +105,7 @@ function App() {
           return (
             <button
               key={t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => { setTab(t.id); setShowSettings(false); }}
               className={`flex items-center gap-2 px-3.5 h-8 rounded-lg text-sm font-medium transition-all ${
                 active
                   ? 'bg-slate-800 text-white shadow-sm'
@@ -115,6 +117,19 @@ function App() {
             </button>
           );
         })}
+        <div className="flex-1" />
+        <button
+          onClick={() => setShowSettings((v) => !v)}
+          className={`flex items-center gap-2 px-3.5 h-8 rounded-lg text-sm font-medium transition-all ${
+            showSettings
+              ? 'bg-slate-800 text-white shadow-sm'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+          title="Settings"
+        >
+          <SettingsIcon className="w-4 h-4" />
+          Settings
+        </button>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
@@ -128,12 +143,22 @@ function App() {
           onSignOut={() => supabase.auth.signOut()}
         />
 
-        {tab === 'chat' && <ChatView chat={activeChat} category={activeCategory} />}
-        {tab === 'calendar' && (
-          <CalendarView chats={chats} categories={categories} onSelectChat={handleSelectChat} />
-        )}
-        {tab === 'folders' && (
-          <FolderView chats={chats} categories={categories} onSelectChat={handleSelectChat} />
+        {showSettings ? (
+          <Settings
+            archivedChats={archivedChats}
+            onClose={() => setShowSettings(false)}
+            onRefresh={refresh}
+          />
+        ) : (
+          <>
+            {tab === 'chat' && <ChatView chat={activeChat} category={activeCategory} />}
+            {tab === 'calendar' && (
+              <CalendarView chats={chats} categories={categories} onSelectChat={handleSelectChat} />
+            )}
+            {tab === 'folders' && (
+              <FolderView chats={chats} categories={categories} onSelectChat={handleSelectChat} />
+            )}
+          </>
         )}
       </div>
     </div>
