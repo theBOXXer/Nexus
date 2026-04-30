@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Folder, FolderOpen, MessageSquare, Inbox, GripVertical } from 'lucide-react';
-import { Chat, Category, chats, categories } from '../lib/api';
+import { Chat, Category, CATEGORY_COLORS, chats, categories } from '../lib/api';
 
 interface Props {
   chats: Chat[];
@@ -16,6 +16,19 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
   const [catDragIdx, setCatDragIdx] = useState<number | null>(null);
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [colorPickerCat, setColorPickerCat] = useState<string | null>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!colorPickerCat) return;
+    function onClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setColorPickerCat(null);
+      }
+    }
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, [colorPickerCat]);
 
   function onDragStartChat(e: React.DragEvent, chatId: string) {
     e.dataTransfer.setData('text/plain', chatId);
@@ -60,6 +73,12 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
   function startRename(id: string, name: string) {
     setEditingCat(id);
     setEditName(name);
+  }
+
+  async function changeColor(id: string, color: string) {
+    await categories.update(id, { color });
+    setColorPickerCat(null);
+    onRefresh();
   }
 
   const buckets: { id: string | null; name: string; color: string; chats: Chat[]; icon: typeof Folder }[] = [
@@ -143,7 +162,31 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
                         {b.name}
                       </div>
                     )}
-                    <div className="text-xs text-slate-500">{b.chats.length} {b.chats.length === 1 ? 'chat' : 'chats'}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="text-xs text-slate-500">{b.chats.length} {b.chats.length === 1 ? 'chat' : 'chats'}</div>
+                      {b.id && (
+                        <div ref={colorPickerCat === b.id ? pickerRef : undefined} className="relative">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); setColorPickerCat(colorPickerCat === b.id ? null : b.id); }}
+                            className="w-5 h-5 rounded-full border transition-transform hover:scale-110 flex-shrink-0"
+                            style={{ background: b.color, borderColor: b.color }}
+                            title="Change color"
+                          />
+                          {colorPickerCat === b.id && (
+                            <div className="absolute top-full left-0 mt-2 bg-slate-800 border border-slate-700 rounded-xl p-2.5 shadow-2xl z-50 flex flex-wrap gap-1.5 w-[152px]">
+                              {CATEGORY_COLORS.map(c => (
+                                <button
+                                  key={c}
+                                  onClick={(e) => { e.stopPropagation(); changeColor(b.id!, c); }}
+                                  className={`w-6 h-6 rounded-lg border transition-transform hover:scale-110 ${c === b.color ? 'border-white ring-1 ring-white/70' : 'border-transparent'}`}
+                                  style={{ background: c }}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   {b.id && catDragIdx !== null && (
                     <div className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${catActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-500'}`}>

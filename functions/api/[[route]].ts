@@ -162,11 +162,12 @@ async function createCategory(req: Request, env: Env, userId: string): Promise<R
 }
 
 async function updateCategory(req: Request, env: Env, userId: string, catId: string): Promise<Response> {
-  const body = await req.json() as { name?: string; position?: number };
+  const body = await req.json() as { name?: string; position?: number; color?: string };
   const sets: string[] = [];
   const vals: unknown[] = [];
   if (body.name !== undefined) { sets.push('name = ?'); vals.push(body.name.trim()); }
   if (body.position !== undefined) { sets.push('position = ?'); vals.push(body.position); }
+  if (body.color !== undefined) { sets.push('color = ?'); vals.push(body.color); }
   if (sets.length === 0) return error('No valid fields');
   vals.push(catId, userId);
   const result = await env.DB.prepare(`UPDATE categories SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`)

@@ -92,7 +92,7 @@ export const auth = {
 export const categories = {
   list: () => get<Category[]>('/categories'),
   create: () => post<Category>('/categories'),
-  update: (id: string, data: { name?: string; position?: number }) =>
+  update: (id: string, data: { name?: string; position?: number; color?: string }) =>
     put<{ success: boolean }>(`/categories/${id}`, data),
   remove: (id: string) => del<{ success: boolean }>(`/categories/${id}`),
 };
