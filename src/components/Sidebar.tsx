@@ -28,6 +28,7 @@ export default function Sidebar({
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [dragOver, setDragOver] = useState<string | null>(null);
 
   const uncategorized = allChats.filter((c) => !c.category_id);
 
@@ -53,15 +54,19 @@ export default function Sidebar({
   }
 
   function handleDragStart(e: React.DragEvent, chatId: string) {
-    e.dataTransfer.setData('chatId', chatId);
+    e.dataTransfer.setData('text/plain', chatId);
     e.dataTransfer.effectAllowed = 'move';
   }
 
   async function handleDrop(e: React.DragEvent, categoryId: string | null) {
     e.preventDefault();
-    const chatId = e.dataTransfer.getData('chatId');
+    e.stopPropagation();
+    setDragOver(null);
+    const chatId = e.dataTransfer.getData('text/plain');
     if (!chatId) return;
+    updateChatLocally(chatId, { category_id: categoryId });
     await chats.update(chatId, { category_id: categoryId });
+    onRefresh();
   }
 
   function toggleCollapse(id: string) {
@@ -109,9 +114,11 @@ export default function Sidebar({
 
       <div className="flex-1 overflow-y-auto py-3 px-2">
         <div
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onDragEnter={() => setDragOver('_uncat')}
+          onDragLeave={(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as HTMLElement)) setDragOver(null); }}
           onDrop={(e) => handleDrop(e, null)}
-          className="mb-2"
+          className={`mb-2 rounded-lg transition-colors ${dragOver === '_uncat' ? 'bg-sky-500/10 ring-2 ring-sky-500/30' : ''}`}
         >
           <div className="flex items-center justify-between px-2 py-1 group">
             <div className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -147,9 +154,11 @@ export default function Sidebar({
           return (
             <div
               key={cat.id}
-              onDragOver={(e) => e.preventDefault()}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDragEnter={() => setDragOver(cat.id)}
+              onDragLeave={(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as HTMLElement)) setDragOver(null); }}
               onDrop={(e) => handleDrop(e, cat.id)}
-              className="mb-2"
+              className={`mb-2 rounded-lg transition-colors ${dragOver === cat.id ? 'bg-sky-500/10 ring-2 ring-sky-500/30' : ''}`}
             >
               <div className="flex items-center justify-between px-2 py-1 group rounded-md hover:bg-slate-800/40">
                 <button
