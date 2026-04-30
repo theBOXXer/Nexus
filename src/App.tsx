@@ -64,6 +64,7 @@ function App() {
     });
     setActiveChatId(chat.id);
     setTab('chat');
+    setShowSettings(false);
   }
 
   async function handleNewChatForDate(date: Date) {
@@ -81,6 +82,7 @@ function App() {
   function handleSelectChat(id: string) {
     setActiveChatId(id);
     setTab('chat');
+    setShowSettings(false);
   }
 
   function handleSignOut() {
