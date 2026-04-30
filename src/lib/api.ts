@@ -99,7 +99,7 @@ export const categories = {
 
 export const chats = {
   list: () => get<Chat[]>('/chats'),
-  create: (data: { category_id?: string | null; title?: string; model?: string }) =>
+  create: (data: { category_id?: string | null; title?: string; model?: string; created_at?: string }) =>
     post<Chat>('/chats', data),
   update: (id: string, data: Record<string, unknown>) =>
     put<{ success: boolean }>(`/chats/${id}`, data),

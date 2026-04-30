@@ -65,6 +65,18 @@ function App() {
     setTab('chat');
   }
 
+  async function handleNewChatForDate(date: Date) {
+    if (!session) return;
+    const created_at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0).toISOString();
+    const chat = await chats.create({
+      title: 'New Chat',
+      model: 'gpt-4o-mini',
+      created_at,
+    });
+    setActiveChatId(chat.id);
+    setTab('chat');
+  }
+
   function handleSelectChat(id: string) {
     setActiveChatId(id);
     setTab('chat');
@@ -151,7 +163,7 @@ function App() {
           <>
             {tab === 'chat' && <ChatView chat={activeChat} category={activeCategory} onRefresh={refresh} updateChatLocally={updateChatLocally} />}
             {tab === 'calendar' && (
-              <CalendarView chats={chatList} categories={categories} onSelectChat={handleSelectChat} />
+              <CalendarView chats={chatList} categories={categories} onSelectChat={handleSelectChat} onNewChat={handleNewChatForDate} />
             )}
             {tab === 'folders' && (
               <FolderView chats={chatList} categories={categories} onSelectChat={handleSelectChat} onRefresh={refresh} updateChatLocally={updateChatLocally} />

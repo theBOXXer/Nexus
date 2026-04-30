@@ -191,11 +191,12 @@ async function listChats(_req: Request, env: Env, userId: string): Promise<Respo
 }
 
 async function createChat(req: Request, env: Env, userId: string): Promise<Response> {
-  const { category_id, title, model } = await req.json() as { category_id?: string; title?: string; model?: string };
+  const { category_id, title, model, created_at } = await req.json() as { category_id?: string; title?: string; model?: string; created_at?: string };
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
+  const catCreatedAt = created_at || now;
   await env.DB.prepare('INSERT INTO chats (id, user_id, category_id, title, model, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .bind(id, userId, category_id || null, title || 'New Chat', model || 'gpt-4o-mini', now, now).run();
+    .bind(id, userId, category_id || null, title || 'New Chat', model || 'gpt-4o-mini', catCreatedAt, now).run();
   const row = await env.DB.prepare('SELECT * FROM chats WHERE id = ?').bind(id).first();
   return json(row, 201);
 }

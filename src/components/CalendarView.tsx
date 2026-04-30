@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, MessageSquare, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MessageSquare, X, Plus } from 'lucide-react';
 import { Chat, Category } from '../lib/api';
 
 interface Props {
   chats: Chat[];
   categories: Category[];
   onSelectChat: (id: string) => void;
+  onNewChat: (date: Date) => void;
 }
 
 function startOfMonth(d: Date) {
@@ -20,11 +21,12 @@ function toKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-export default function CalendarView({ chats, categories, onSelectChat }: Props) {
+export default function CalendarView({ chats, categories, onSelectChat, onNewChat }: Props) {
   const [month, setMonth] = useState(startOfMonth(new Date()));
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [hoveredDay, setHoveredDay] = useState<string | null>(null);
 
   const chatsByDay = useMemo(() => {
     const map = new Map<string, Chat[]>();
@@ -78,6 +80,10 @@ export default function CalendarView({ chats, categories, onSelectChat }: Props)
   function onMouseUp() {
     setDragging(false);
   }
+  function onMouseEnterDay(d: Date) {
+    setHoveredDay(toKey(d));
+    if (dragging) setRangeEnd(d);
+  }
 
   const monthLabel = month.toLocaleString(undefined, { month: 'long', year: 'numeric' });
 
@@ -128,8 +134,9 @@ export default function CalendarView({ chats, categories, onSelectChat }: Props)
                 <div
                   key={i}
                   onMouseDown={() => onMouseDown(d)}
-                  onMouseEnter={() => onMouseEnter(d)}
-                  className={`aspect-square rounded-lg border p-2 flex flex-col cursor-pointer transition-colors ${
+                  onMouseEnter={() => onMouseEnterDay(d)}
+                  onMouseLeave={() => setHoveredDay(null)}
+                  className={`aspect-square rounded-lg border p-2 flex flex-col cursor-pointer transition-colors relative ${
                     inRange
                       ? 'border-sky-500/60 bg-sky-500/10'
                       : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/60'
@@ -170,6 +177,18 @@ export default function CalendarView({ chats, categories, onSelectChat }: Props)
                       <div className="text-[10px] text-slate-500 px-1.5">+{dayChats.length - 2} more</div>
                     )}
                   </div>
+                  {hoveredDay === toKey(d) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNewChat(d);
+                      }}
+                      className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-md bg-sky-500/20 hover:bg-sky-500/40 text-sky-300 hover:text-sky-200 border border-sky-500/30 flex items-center justify-center transition-all"
+                      title="New chat on this date"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               );
             })}
