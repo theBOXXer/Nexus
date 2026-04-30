@@ -23,6 +23,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldScrollRef = useRef(false);
+  const prevMsgCountRef = useRef(0);
 
   useEffect(() => {
     if (!chat) {
@@ -41,16 +42,19 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el) { prevMsgCountRef.current = msgs.length; return; }
     if (shouldScrollRef.current) {
       shouldScrollRef.current = false;
       requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+      prevMsgCountRef.current = msgs.length;
       return;
     }
+    const newMsgsArrived = msgs.length > prevMsgCountRef.current;
     const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 60;
-    if (atBottom) {
+    if (newMsgsArrived && atBottom) {
       el.scrollTop = el.scrollHeight;
     }
+    prevMsgCountRef.current = msgs.length;
   }, [msgs]);
 
   async function changeModel(model: string) {
