@@ -18,15 +18,12 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [titleDraft, setTitleDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const userScrolledUpRef = useRef(false);
-  const forceScrollRef = useRef(false);
 
   useEffect(() => {
     if (!chat) {
       setMsgs([]);
       return;
     }
-    userScrolledUpRef.current = false;
     let cancelled = false;
     messages.list(chat.id).then((data) => {
       if (!cancelled) setMsgs(data);
@@ -35,16 +32,13 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   }, [chat]);
 
   useEffect(() => {
-    if (userScrolledUpRef.current && !forceScrollRef.current) return;
-    forceScrollRef.current = false;
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [msgs]);
-
-  function handleScroll() {
     const el = scrollRef.current;
     if (!el) return;
-    userScrolledUpRef.current = el.scrollTop + el.clientHeight < el.scrollHeight - 60;
-  }
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 60;
+    if (atBottom) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [msgs]);
 
   async function changeModel(model: string) {
     if (!chat) return;
@@ -80,7 +74,6 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     setInput('');
     setSending(true);
     setError(null);
-    forceScrollRef.current = true;
 
     try {
       const userMsg = await messages.create({ chat_id: chat.id, role: 'user', content });
@@ -181,7 +174,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
         </select>
       </div>
 
-      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-6 py-6">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
         {msgs.length === 0 && (
           <div className="max-w-2xl mx-auto mt-12 text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-400 mb-4">
