@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MessageSquare, Calendar, FolderTree, Settings as SettingsIcon } from 'lucide-react';
-import { supabase } from './lib/supabase';
+import { auth, clearToken, setToken, chats } from './lib/api';
 import { useChatData } from './hooks/useChatData';
 import Auth from './components/Auth';
 import Sidebar from './components/Sidebar';
@@ -19,29 +19,26 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        setSession({ userId: data.session.user.id, email: data.session.user.email || '' });
-      }
+    const token = auth.getToken();
+    if (token) {
+      auth.me()
+        .then((user) => setSession({ userId: user.id, email: user.email }))
+        .catch(() => { clearToken(); })
+        .finally(() => setAuthLoading(false));
+    } else {
       setAuthLoading(false);
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
-      if (s) setSession({ userId: s.user.id, email: s.user.email || '' });
-      else {
-        setSession(null);
-        setActiveChatId(null);
-      }
-    });
-
-    return () => sub.subscription.unsubscribe();
+    }
   }, []);
 
-  const { categories, chats, archivedChats, refresh } = useChatData(session?.userId ?? null);
+  function handleAuth(userId: string, email: string) {
+    setSession({ userId, email });
+  }
+
+  const { categories, chats: chatList, archivedChats, refresh } = useChatData(session?.userId ?? null);
 
   const activeChat = useMemo(
-    () => chats.find((c) => c.id === activeChatId) || null,
-    [chats, activeChatId],
+    () => chatList.find((c) => c.id === activeChatId) || null,
+    [chatList, activeChatId],
   );
   const activeCategory = useMemo(
     () => (activeChat?.category_id ? categories.find((c) => c.id === activeChat.category_id) || null : null),
@@ -49,35 +46,34 @@ function App() {
   );
 
   useEffect(() => {
-    if (!activeChatId && chats.length > 0 && tab === 'chat') {
-      setActiveChatId(chats[0].id);
+    if (!activeChatId && chatList.length > 0 && tab === 'chat') {
+      setActiveChatId(chatList[0].id);
     }
-    if (activeChatId && !chats.find((c) => c.id === activeChatId)) {
-      setActiveChatId(chats[0]?.id || null);
+    if (activeChatId && !chatList.find((c) => c.id === activeChatId)) {
+      setActiveChatId(chatList[0]?.id || null);
     }
-  }, [chats, activeChatId, tab]);
+  }, [chatList, activeChatId, tab]);
 
   async function handleNewChat(categoryId: string | null) {
     if (!session) return;
-    const { data } = await supabase
-      .from('chats')
-      .insert({
-        user_id: session.userId,
-        category_id: categoryId,
-        title: 'New Chat',
-        model: 'gpt-4o-mini',
-      })
-      .select()
-      .maybeSingle();
-    if (data) {
-      setActiveChatId(data.id);
-      setTab('chat');
-    }
+    const chat = await chats.create({
+      category_id: categoryId,
+      title: 'New Chat',
+      model: 'gpt-4o-mini',
+    });
+    setActiveChatId(chat.id);
+    setTab('chat');
   }
 
   function handleSelectChat(id: string) {
     setActiveChatId(id);
     setTab('chat');
+  }
+
+  function handleSignOut() {
+    clearToken();
+    setSession(null);
+    setActiveChatId(null);
   }
 
   if (authLoading) {
@@ -88,7 +84,7 @@ function App() {
     );
   }
 
-  if (!session) return <Auth />;
+  if (!session) return <Auth onAuth={handleAuth} />;
 
   const tabs: { id: Tab; label: string; icon: typeof MessageSquare }[] = [
     { id: 'chat', label: 'Chats', icon: MessageSquare },
@@ -135,12 +131,12 @@ function App() {
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
           categories={categories}
-          chats={chats}
+          chats={chatList}
           activeChatId={activeChatId}
           onSelectChat={handleSelectChat}
           onNewChat={handleNewChat}
           userEmail={session.email}
-          onSignOut={() => supabase.auth.signOut()}
+          onSignOut={handleSignOut}
         />
 
         {showSettings ? (
@@ -153,10 +149,10 @@ function App() {
           <>
             {tab === 'chat' && <ChatView chat={activeChat} category={activeCategory} />}
             {tab === 'calendar' && (
-              <CalendarView chats={chats} categories={categories} onSelectChat={handleSelectChat} />
+              <CalendarView chats={chatList} categories={categories} onSelectChat={handleSelectChat} />
             )}
             {tab === 'folders' && (
-              <FolderView chats={chats} categories={categories} onSelectChat={handleSelectChat} />
+              <FolderView chats={chatList} categories={categories} onSelectChat={handleSelectChat} />
             )}
           </>
         )}

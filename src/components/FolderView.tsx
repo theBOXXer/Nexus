@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Folder, FolderOpen, MessageSquare, Inbox } from 'lucide-react';
-import { Chat, Category, supabase } from '../lib/supabase';
+import { Chat, Category, chats } from '../lib/api';
 
 interface Props {
   chats: Chat[];
@@ -21,7 +21,7 @@ export default function FolderView({ chats, categories, onSelectChat }: Props) {
     setDragOver(null);
     const chatId = e.dataTransfer.getData('chatId');
     if (!chatId) return;
-    await supabase.from('chats').update({ category_id: categoryId }).eq('id', chatId);
+    await chats.update(chatId, { category_id: categoryId });
   }
 
   const buckets: { id: string | null; name: string; color: string; chats: Chat[]; icon: typeof Folder }[] = [

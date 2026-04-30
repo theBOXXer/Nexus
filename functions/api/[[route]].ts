@@ -1,0 +1,409 @@
+interface Env {
+  DB: { prepare(sql: string): { bind(...args: unknown[]): { run(): Promise<{ changes: number }>; first<T>(): Promise<T | null>; all<T>(): Promise<{ results: T[] }> } } };
+  JWT_SECRET: string;
+  OPENAI_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
+}
+
+interface JWTPayload {
+  sub: string;
+  email: string;
+  exp: number;
+  iat: number;
+}
+
+// ─── JWT ────────────────────────────────────────────────────────────────────
+
+function base64urlEncode(data: ArrayBuffer): string {
+  const bytes = new Uint8Array(data);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64urlDecode(str: string): Uint8Array {
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) str += '=';
+  const binary = atob(str);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function signJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: string): Promise<string> {
+  const enc = new TextEncoder();
+  const now = Math.floor(Date.now() / 1000);
+  const full: JWTPayload = { ...payload, iat: now, exp: now + 86400 * 7 };
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const h = base64urlEncode(enc.encode(JSON.stringify(header)));
+  const p = base64urlEncode(enc.encode(JSON.stringify(full)));
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(`${h}.${p}`));
+  return `${h}.${p}.${base64urlEncode(sig)}`;
+}
+
+async function verifyJWT(token: string, secret: string): Promise<JWTPayload> {
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Invalid token');
+  const [h, p, s] = parts;
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+  const valid = await crypto.subtle.verify('HMAC', key, base64urlDecode(s), enc.encode(`${h}.${p}`));
+  if (!valid) throw new Error('Invalid signature');
+  const payload = JSON.parse(new TextDecoder().decode(base64urlDecode(p))) as JWTPayload;
+  if (payload.exp < Math.floor(Date.now() / 1000)) throw new Error('Token expired');
+  return payload;
+}
+
+// ─── Password hashing ───────────────────────────────────────────────────────
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, key, 256);
+  const saltHex = [...salt].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return `${saltHex}:${hashHex}`;
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  const [saltHex, hashHex] = stored.split(':');
+  if (!saltHex || !hashHex) return false;
+  const salt = new Uint8Array(saltHex.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, key, 256);
+  const computed = [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return computed === hashHex;
+}
+
+// ─── Auth middleware ─────────────────────────────────────────────────────────
+
+async function requireAuth(request: Request, env: Env): Promise<{ userId: string; email: string }> {
+  const auth = request.headers.get('Authorization');
+  if (!auth || !auth.startsWith('Bearer ')) throw new Error('Missing token');
+  const payload = await verifyJWT(auth.slice(7), env.JWT_SECRET);
+  return { userId: payload.sub, email: payload.email };
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function error(message: string, status = 400): Response {
+  return json({ error: message }, status);
+}
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// ─── Route handlers ──────────────────────────────────────────────────────────
+
+async function handleAuthSignup(req: Request, env: Env): Promise<Response> {
+  const { email, password } = await req.json() as { email?: string; password?: string };
+  if (!email || !password) return error('Email and password required');
+  if (password.length < 6) return error('Password must be at least 6 characters');
+
+  const id = crypto.randomUUID();
+  const hash = await hashPassword(password);
+  try {
+    await env.DB.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)').bind(id, email.toLowerCase(), hash).run();
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message?.includes('UNIQUE')) return error('Email already registered', 409);
+    throw e;
+  }
+  const token = await signJWT({ sub: id, email: email.toLowerCase() }, env.JWT_SECRET);
+  return json({ token, user: { id, email: email.toLowerCase() } });
+}
+
+async function handleAuthSignin(req: Request, env: Env): Promise<Response> {
+  const { email, password } = await req.json() as { email?: string; password?: string };
+  if (!email || !password) return error('Email and password required');
+
+  const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(email.toLowerCase()).first<{ id: string; password_hash: string }>();
+  if (!user) return error('Invalid email or password', 401);
+
+  const valid = await verifyPassword(password, user.password_hash);
+  if (!valid) return error('Invalid email or password', 401);
+
+  const token = await signJWT({ sub: user.id, email: email.toLowerCase() }, env.JWT_SECRET);
+  return json({ token, user: { id: user.id, email: email.toLowerCase() } });
+}
+
+async function handleAuthMe(req: Request, env: Env): Promise<Response> {
+  const { userId, email } = await requireAuth(req, env);
+  return json({ id: userId, email });
+}
+
+// ─── Categories ──────────────────────────────────────────────────────────────
+
+async function listCategories(_req: Request, env: Env, userId: string): Promise<Response> {
+  const rows = await env.DB.prepare('SELECT * FROM categories WHERE user_id = ? ORDER BY position').bind(userId).all();
+  return json(rows.results);
+}
+
+async function createCategory(req: Request, env: Env, userId: string): Promise<Response> {
+  const id = crypto.randomUUID();
+  const color = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#0ea5e9', '#3b82f6', '#ec4899', '#64748b'][Math.floor(Math.random() * 9)];
+  await env.DB.prepare('INSERT INTO categories (id, user_id, name, color, position, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(id, userId, 'New Category', color, 0, new Date().toISOString()).run();
+  const row = await env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first();
+  return json(row, 201);
+}
+
+async function updateCategory(req: Request, env: Env, userId: string, catId: string): Promise<Response> {
+  const { name } = await req.json() as { name?: string };
+  if (!name) return error('Name required');
+  const result = await env.DB.prepare('UPDATE categories SET name = ? WHERE id = ? AND user_id = ?').bind(name.trim(), catId, userId).run();
+  if (result.changes === 0) return error('Not found', 404);
+  return json({ success: true });
+}
+
+async function deleteCategory(_req: Request, env: Env, userId: string, catId: string): Promise<Response> {
+  const result = await env.DB.prepare('DELETE FROM categories WHERE id = ? AND user_id = ?').bind(catId, userId).run();
+  if (result.changes === 0) return error('Not found', 404);
+  return json({ success: true });
+}
+
+// ─── Chats ───────────────────────────────────────────────────────────────────
+
+async function listChats(_req: Request, env: Env, userId: string): Promise<Response> {
+  const rows = await env.DB.prepare('SELECT * FROM chats WHERE user_id = ? ORDER BY updated_at DESC').bind(userId).all();
+  return json(rows.results);
+}
+
+async function createChat(req: Request, env: Env, userId: string): Promise<Response> {
+  const { category_id, title, model } = await req.json() as { category_id?: string; title?: string; model?: string };
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await env.DB.prepare('INSERT INTO chats (id, user_id, category_id, title, model, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, userId, category_id || null, title || 'New Chat', model || 'gpt-4o-mini', now, now).run();
+  const row = await env.DB.prepare('SELECT * FROM chats WHERE id = ?').bind(id).first();
+  return json(row, 201);
+}
+
+async function updateChat(req: Request, env: Env, userId: string, chatId: string): Promise<Response> {
+  const body = await req.json() as Record<string, unknown>;
+  const allowed = ['title', 'model', 'archived', 'category_id'];
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  for (const [k, v] of Object.entries(body)) {
+    if (allowed.includes(k)) {
+      sets.push(`${k} = ?`);
+      vals.push(k === 'archived' ? (v ? 1 : 0) : v);
+    }
+  }
+  if (sets.length === 0) return error('No valid fields');
+  vals.push(chatId, userId);
+  const result = await env.DB.prepare(`UPDATE chats SET ${sets.join(', ')}, updated_at = ? WHERE id = ? AND user_id = ?`)
+    .bind(...vals.map(v => v === undefined ? null : v) as unknown[], new Date().toISOString()).run();
+  if (result.changes === 0) return error('Not found', 404);
+  return json({ success: true });
+}
+
+async function deleteChat(_req: Request, env: Env, userId: string, chatId: string): Promise<Response> {
+  const result = await env.DB.prepare('DELETE FROM chats WHERE id = ? AND user_id = ?').bind(chatId, userId).run();
+  if (result.changes === 0) return error('Not found', 404);
+  return json({ success: true });
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+interface Message {
+  id: string;
+  chat_id: string;
+  user_id: string;
+  role: string;
+  content: string;
+  model: string | null;
+  created_at: string;
+}
+
+async function listMessages(req: Request, env: Env, userId: string): Promise<Response> {
+  const url = new URL(req.url);
+  const chatId = url.searchParams.get('chat_id');
+  if (!chatId) return error('chat_id required');
+  // Verify chat belongs to user
+  const chat = await env.DB.prepare('SELECT id FROM chats WHERE id = ? AND user_id = ?').bind(chatId, userId).first();
+  if (!chat) return error('Chat not found', 404);
+  const rows = await env.DB.prepare('SELECT * FROM messages WHERE chat_id = ? ORDER BY created_at ASC').bind(chatId).all();
+  return json(rows.results);
+}
+
+async function createMessage(req: Request, env: Env, userId: string): Promise<Response> {
+  const { chat_id, role, content, model } = await req.json() as { chat_id?: string; role?: string; content?: string; model?: string };
+  if (!chat_id || !content) return error('chat_id and content required');
+  const chat = await env.DB.prepare('SELECT id FROM chats WHERE id = ? AND user_id = ?').bind(chat_id, userId).first();
+  if (!chat) return error('Chat not found', 404);
+  const id = crypto.randomUUID();
+  await env.DB.prepare('INSERT INTO messages (id, chat_id, user_id, role, content, model) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(id, chat_id, userId, role || 'user', content, model || null).run();
+  await env.DB.prepare('UPDATE chats SET updated_at = ? WHERE id = ?').bind(new Date().toISOString(), chat_id).run();
+  const row = await env.DB.prepare('SELECT * FROM messages WHERE id = ?').bind(id).first();
+  return json(row, 201);
+}
+
+// ─── LLM Chat ────────────────────────────────────────────────────────────────
+
+const MODEL_MAP: Record<string, 'openai' | 'anthropic'> = {
+  'gpt-4o': 'openai', 'gpt-4o-mini': 'openai', 'gpt-4-turbo': 'openai', 'gpt-3.5-turbo': 'openai',
+  'claude-opus-4-5': 'anthropic', 'claude-sonnet-4-5': 'anthropic', 'claude-3-5-haiku-latest': 'anthropic',
+};
+
+async function handleLLMChat(req: Request, env: Env): Promise<Response> {
+  const { model, messages } = await req.json() as { model?: string; messages?: { role: string; content: string }[] };
+  if (!model || !messages) return error('model and messages required');
+
+  const provider = MODEL_MAP[model];
+  if (!provider) return error(`Unsupported model: ${model}`);
+
+  if (provider === 'openai') {
+    const key = env.OPENAI_API_KEY;
+    if (!key) return error('OPENAI_API_KEY not configured', 500);
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model, messages }),
+    });
+    if (!res.ok) return error(`OpenAI: ${await res.text()}`, 502);
+    const data = await res.json() as { choices: { message: { content: string } }[] };
+    return json({ content: data.choices[0].message.content });
+  }
+
+  const key = env.ANTHROPIC_API_KEY;
+  if (!key) return error('ANTHROPIC_API_KEY not configured', 500);
+  const system = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');
+  const nonSystem = messages.filter((m) => m.role !== 'system');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model, max_tokens: 4096, system: system || undefined, messages: nonSystem }),
+  });
+  if (!res.ok) return error(`Anthropic: ${await res.text()}`, 502);
+  const data = await res.json() as { content: { text: string }[] };
+  return json({ content: data.content[0].text });
+}
+
+// ─── Router ──────────────────────────────────────────────────────────────────
+
+export const onRequest: PagesFunction<Env> = async (context) => {
+  const { request, env } = context;
+
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/^\/api/, '');
+
+  try {
+    // Auth routes (no token required)
+    if (path === '/auth/signup' && request.method === 'POST') {
+      const res = await handleAuthSignup(request, env);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+    if (path === '/auth/signin' && request.method === 'POST') {
+      const res = await handleAuthSignin(request, env);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+
+    // Protected routes
+    const { userId } = await requireAuth(request, env);
+
+    if (path === '/auth/me' && request.method === 'GET') {
+      const res = await handleAuthMe(request, env);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+
+    // Categories
+    if (path === '/categories' && request.method === 'GET') {
+      const res = await listCategories(request, env, userId);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+    if (path === '/categories' && request.method === 'POST') {
+      const res = await createCategory(request, env, userId);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+    const catMatch = path.match(/^\/categories\/(.+)$/);
+    if (catMatch) {
+      const catId = catMatch[1];
+      if (request.method === 'PUT') {
+        const res = await updateCategory(request, env, userId, catId);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+      if (request.method === 'DELETE') {
+        const res = await deleteCategory(request, env, userId, catId);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
+    // Chats
+    if (path === '/chats' && request.method === 'GET') {
+      const res = await listChats(request, env, userId);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+    if (path === '/chats' && request.method === 'POST') {
+      const res = await createChat(request, env, userId);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+    const chatMatch = path.match(/^\/chats\/(.+)$/);
+    if (chatMatch) {
+      const chatId = chatMatch[1];
+      if (request.method === 'PUT') {
+        const res = await updateChat(request, env, userId, chatId);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+      if (request.method === 'DELETE') {
+        const res = await deleteChat(request, env, userId, chatId);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
+    // Messages
+    if (path === '/messages' && request.method === 'GET') {
+      const res = await listMessages(request, env, userId);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+    if (path === '/messages' && request.method === 'POST') {
+      const res = await createMessage(request, env, userId);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+
+    // LLM Chat
+    if (path === '/llm-chat' && request.method === 'POST') {
+      const res = await handleLLMChat(request, env);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+
+    return error('Not found', 404);
+  } catch (e) {
+    if (e instanceof Error && (e.message === 'Missing token' || e.message === 'Invalid token' || e.message === 'Invalid signature' || e.message === 'Token expired')) {
+      return error('Unauthorized', 401);
+    }
+    console.error(e);
+    return error(e instanceof Error ? e.message : 'Internal error', 500);
+  }
+};

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, MessageSquare, X } from 'lucide-react';
-import { Chat, Category } from '../lib/supabase';
+import { Chat, Category } from '../lib/api';
 
 interface Props {
   chats: Chat[];

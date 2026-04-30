@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send, Bot, User, Sparkles, Loader2, Hash } from 'lucide-react';
-import { supabase, Chat, Message, MODELS, Category } from '../lib/supabase';
+import { Chat, Message, Category, MODELS, messages, chats, llm } from '../lib/api';
 
 interface Props {
   chat: Chat | null;
@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function ChatView({ chat, category }: Props) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [msgs, setMsgs] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,48 +16,23 @@ export default function ChatView({ chat, category }: Props) {
 
   useEffect(() => {
     if (!chat) {
-      setMessages([]);
+      setMsgs([]);
       return;
     }
     let cancelled = false;
-
-    async function load() {
-      const { data } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('chat_id', chat!.id)
-        .order('created_at', { ascending: true });
-      if (!cancelled && data) setMessages(data as Message[]);
-    }
-    load();
-
-    const channel = supabase
-      .channel('messages-' + chat.id)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chat.id}` },
-        (payload) => {
-          setMessages((prev) => {
-            if (prev.find((m) => m.id === (payload.new as Message).id)) return prev;
-            return [...prev, payload.new as Message];
-          });
-        },
-      )
-      .subscribe();
-
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
+    messages.list(chat.id).then((data) => {
+      if (!cancelled) setMsgs(data);
+    });
+    return () => { cancelled = true; };
   }, [chat]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, sending]);
+  }, [msgs, sending]);
 
   async function changeModel(model: string) {
     if (!chat) return;
-    await supabase.from('chats').update({ model }).eq('id', chat.id);
+    await chats.update(chat.id, { model });
   }
 
   async function sendMessage() {
@@ -67,57 +42,28 @@ export default function ChatView({ chat, category }: Props) {
     setSending(true);
     setError(null);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setSending(false);
-      return;
-    }
-
-    const { data: userMsg } = await supabase
-      .from('messages')
-      .insert({ chat_id: chat.id, user_id: user.id, role: 'user', content })
-      .select()
-      .maybeSingle();
-
-    if (userMsg) {
-      setMessages((prev) => (prev.find((m) => m.id === userMsg.id) ? prev : [...prev, userMsg as Message]));
-    }
-
-    if (messages.length === 0) {
-      const title = content.length > 50 ? content.slice(0, 50) + '...' : content;
-      await supabase.from('chats').update({ title, updated_at: new Date().toISOString() }).eq('id', chat.id);
-    } else {
-      await supabase.from('chats').update({ updated_at: new Date().toISOString() }).eq('id', chat.id);
-    }
-
     try {
-      const conversation = [...messages, { role: 'user', content } as Message].map((m) => ({
+      const userMsg = await messages.create({ chat_id: chat.id, role: 'user', content });
+      setMsgs((prev) => [...prev, userMsg]);
+
+      if (msgs.length === 0) {
+        const title = content.length > 50 ? content.slice(0, 50) + '...' : content;
+        await chats.update(chat.id, { title });
+      }
+
+      const conversation = [...msgs, { role: 'user', content } as Message].map((m) => ({
         role: m.role,
         content: m.content,
       }));
 
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/llm-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ model: chat.model, messages: conversation }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Request failed');
-
-      await supabase.from('messages').insert({
+      const res = await llm.chat(chat.model, conversation);
+      const aiMsg = await messages.create({
         chat_id: chat.id,
-        user_id: user.id,
         role: 'assistant',
-        content: data.content,
+        content: res.content,
         model: chat.model,
       });
+      setMsgs((prev) => [...prev, aiMsg]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get response');
     } finally {
@@ -176,7 +122,7 @@ export default function ChatView({ chat, category }: Props) {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
-        {messages.length === 0 && (
+        {msgs.length === 0 && (
           <div className="max-w-2xl mx-auto mt-12 text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-400 mb-4">
               <Bot className="w-3.5 h-3.5 text-emerald-400" />
@@ -188,7 +134,7 @@ export default function ChatView({ chat, category }: Props) {
         )}
 
         <div className="max-w-3xl mx-auto space-y-6">
-          {messages.map((m) => (
+          {msgs.map((m) => (
             <MessageBubble key={m.id} message={m} />
           ))}
           {sending && (

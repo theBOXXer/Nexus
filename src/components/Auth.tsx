@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { auth, setToken } from '../lib/api';
 
-export default function Auth() {
+interface Props {
+  onAuth: (userId: string, email: string) => void;
+}
+
+export default function Auth({ onAuth }: Props) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,11 +18,11 @@ export default function Auth() {
     setError(null);
     setLoading(true);
     try {
-      const { error } =
-        mode === 'signin'
-          ? await supabase.auth.signInWithPassword({ email, password })
-          : await supabase.auth.signUp({ email, password });
-      if (error) setError(error.message);
+      const res = mode === 'signin'
+        ? await auth.signIn(email, password)
+        : await auth.signUp(email, password);
+      setToken(res.token);
+      onAuth(res.user.id, res.user.email);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

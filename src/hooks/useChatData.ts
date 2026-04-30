@@ -1,46 +1,43 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { supabase, Category, Chat } from '../lib/supabase';
+import { Category, Chat, categories, chats } from '../lib/api';
 
 export function useChatData(userId: string | null) {
-  const [categories, setCategories] = useState<Category[]>([]);
   const [allChats, setAllChats] = useState<Chat[]>([]);
+  const [cats, setCats] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const chats = useMemo(
-    () => allChats.filter((c) => c.archived !== true),
+  const activeChats = useMemo(
+    () => allChats.filter((c) => !c.archived),
     [allChats],
   );
 
   const archivedChats = useMemo(
-    () => allChats.filter((c) => c.archived === true),
+    () => allChats.filter((c) => !!c.archived),
     [allChats],
   );
 
   const refresh = useCallback(async () => {
     if (!userId) return;
-    const [catRes, chatRes] = await Promise.all([
-      supabase.from('categories').select('*').order('position', { ascending: true }),
-      supabase.from('chats').select('*').order('updated_at', { ascending: false }),
-    ]);
-    if (catRes.data) setCategories(catRes.data as Category[]);
-    if (chatRes.data) setAllChats(chatRes.data as Chat[]);
+    try {
+      const [catData, chatData] = await Promise.all([
+        categories.list(),
+        chats.list(),
+      ]);
+      setCats(catData);
+      setAllChats(chatData);
+    } catch (e) {
+      // Silently retry on next interval
+    }
     setLoading(false);
   }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
+    setLoading(true);
     refresh();
-
-    const channel = supabase
-      .channel('chat-data-' + userId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories', filter: `user_id=eq.${userId}` }, () => refresh())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chats', filter: `user_id=eq.${userId}` }, () => refresh())
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const interval = setInterval(refresh, 5000);
+    return () => clearInterval(interval);
   }, [userId, refresh]);
 
-  return { categories, chats, archivedChats, loading, refresh };
+  return { categories: cats, chats: activeChats, archivedChats, loading, refresh };
 }

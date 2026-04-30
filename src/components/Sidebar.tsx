@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Plus, MessageSquare, Folder, Archive, Pencil, Trash2, LogOut } from 'lucide-react';
-import { Category, Chat, supabase, CATEGORY_COLORS } from '../lib/supabase';
+import { Category, Chat, categories, chats, CATEGORY_COLORS } from '../lib/api';
 
 interface Props {
   categories: Category[];
@@ -13,8 +13,8 @@ interface Props {
 }
 
 export default function Sidebar({
-  categories,
-  chats,
+  categories: cats,
+  chats: allChats,
   activeChatId,
   onSelectChat,
   onNewChat,
@@ -25,35 +25,25 @@ export default function Sidebar({
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
 
-  const uncategorized = chats.filter((c) => !c.category_id);
+  const uncategorized = allChats.filter((c) => !c.category_id);
 
   async function addCategory() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
     const color = CATEGORY_COLORS[Math.floor(Math.random() * CATEGORY_COLORS.length)];
-    await supabase.from('categories').insert({
-      user_id: user.id,
-      name: 'New Category',
-      color,
-      position: categories.length,
-    });
+    await categories.create();
   }
 
   async function deleteCategory(id: string) {
-    const { error } = await supabase.from('categories').delete().eq('id', id);
-    if (error) console.error('deleteCategory:', error);
+    await categories.remove(id);
   }
 
   async function renameCategory(id: string) {
     if (!editName.trim()) return;
-    const { error } = await supabase.from('categories').update({ name: editName.trim() }).eq('id', id);
-    if (error) console.error('renameCategory:', error);
+    await categories.update(id, editName.trim());
     setEditing(null);
   }
 
   async function archiveChat(id: string) {
-    const { error } = await supabase.from('chats').update({ archived: true }).eq('id', id);
-    if (error) console.error('archiveChat:', error);
+    await chats.update(id, { archived: true });
   }
 
   function handleDragStart(e: React.DragEvent, chatId: string) {
@@ -65,7 +55,7 @@ export default function Sidebar({
     e.preventDefault();
     const chatId = e.dataTransfer.getData('chatId');
     if (!chatId) return;
-    await supabase.from('chats').update({ category_id: categoryId }).eq('id', chatId);
+    await chats.update(chatId, { category_id: categoryId });
   }
 
   function toggleCollapse(id: string) {
@@ -145,8 +135,8 @@ export default function Sidebar({
           </button>
         </div>
 
-        {categories.map((cat) => {
-          const catChats = chats.filter((c) => c.category_id === cat.id);
+        {cats.map((cat) => {
+          const catChats = allChats.filter((c) => c.category_id === cat.id);
           const isCollapsed = collapsed[cat.id];
           return (
             <div
@@ -212,7 +202,7 @@ export default function Sidebar({
           );
         })}
 
-        {categories.length === 0 && (
+        {cats.length === 0 && (
           <div className="px-3 py-4 text-xs text-slate-600 text-center">
             <Folder className="w-5 h-5 mx-auto mb-2 opacity-50" />
             Create a category to organize chats

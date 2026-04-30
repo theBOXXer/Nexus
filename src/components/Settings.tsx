@@ -1,5 +1,5 @@
 import { Archive, RotateCcw, Trash2, X } from 'lucide-react';
-import { Chat, supabase } from '../lib/supabase';
+import { Chat, chats } from '../lib/api';
 
 interface Props {
   archivedChats: Chat[];
@@ -9,14 +9,14 @@ interface Props {
 
 export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
   async function restore(id: string) {
-    await supabase.from('chats').update({ archived: false }).eq('id', id);
+    await chats.update(id, { archived: false });
     onRefresh();
   }
 
   async function deleteForever(id: string) {
     const confirmed = window.confirm('Permanently delete this chat? This cannot be undone.');
     if (!confirmed) return;
-    await supabase.from('chats').delete().eq('id', id);
+    await chats.remove(id);
     onRefresh();
   }
 
