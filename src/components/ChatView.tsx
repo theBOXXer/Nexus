@@ -244,7 +244,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
   return (
-    <div className="flex gap-3 group">
+    <div className={`flex gap-3 group ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
         className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
           isUser ? 'bg-slate-700' : 'bg-gradient-to-br from-sky-500 to-emerald-500'
@@ -252,8 +252,8 @@ function MessageBubble({ message }: { message: Message }) {
       >
         {isUser ? <User className="w-4 h-4 text-slate-200" /> : <Bot className="w-4 h-4 text-white" />}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+      <div className={`min-w-0 max-w-[75%] ${isUser ? 'items-end' : ''}`}>
+        <div className={`flex items-center gap-2 mb-1 ${isUser ? 'flex-row-reverse' : ''}`}>
           <span className="text-sm font-semibold text-white">{isUser ? 'You' : 'Assistant'}</span>
           {message.model && !isUser && (
             <span className="text-xs text-slate-500">{message.model}</span>
@@ -262,7 +262,13 @@ function MessageBubble({ message }: { message: Message }) {
             {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
-        <div className="text-slate-200 text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+        <div
+          className={`text-[15px] leading-relaxed whitespace-pre-wrap break-words px-4 py-3 ${
+            isUser
+              ? 'bg-slate-700/60 text-slate-200 rounded-2xl rounded-br-sm'
+              : 'bg-slate-800/60 text-slate-200 rounded-2xl rounded-bl-sm'
+          }`}
+        >
           {message.content}
         </div>
       </div>
