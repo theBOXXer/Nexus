@@ -203,9 +203,9 @@ async function updateChat(req: Request, env: Env, userId: string, chatId: string
     }
   }
   if (sets.length === 0) return error('No valid fields');
-  vals.push(chatId, userId);
+  const bindVals = [...vals, new Date().toISOString(), chatId, userId];
   const result = await env.DB.prepare(`UPDATE chats SET ${sets.join(', ')}, updated_at = ? WHERE id = ? AND user_id = ?`)
-    .bind(...vals.map(v => v === undefined ? null : v) as unknown[], new Date().toISOString()).run();
+    .bind(...bindVals.map(v => v === undefined ? null : v) as unknown[]).run();
   if (result.changes === 0) return error('Not found', 404);
   return json({ success: true });
 }
