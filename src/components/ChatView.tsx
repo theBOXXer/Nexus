@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm } from '../lib/api';
+import { marked } from 'marked';
 
 interface Props {
   chat: Chat | null;
@@ -277,7 +278,14 @@ function MessageBubble({ message }: { message: Message }) {
               : 'bg-slate-800/60 text-slate-200 rounded-2xl rounded-bl-sm'
           }`}
         >
-          {message.content}
+          {isUser ? (
+            message.content
+          ) : (
+            <div
+              className="markdown-content"
+              dangerouslySetInnerHTML={{ __html: marked.parse(message.content) as string }}
+            />
+          )}
           {!isUser && (
             <button
               onClick={handleCopy}
