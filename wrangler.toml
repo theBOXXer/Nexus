@@ -4,7 +4,7 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "nexus-db"
-database_id = ""
+database_id = "d7cda549-134f-4764-851d-bc4d2dda95a9"
 
 [vars]
 VITE_SUPABASE_URL = "https://ymsrvyldjmdcnqfecunn.supabase.co"
