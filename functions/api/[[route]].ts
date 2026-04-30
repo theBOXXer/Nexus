@@ -203,7 +203,7 @@ async function createChat(req: Request, env: Env, userId: string): Promise<Respo
 
 async function updateChat(req: Request, env: Env, userId: string, chatId: string): Promise<Response> {
   const body = await req.json() as Record<string, unknown>;
-  const allowed = ['title', 'model', 'archived', 'category_id'];
+  const allowed = ['title', 'model', 'archived', 'category_id', 'created_at'];
   const sets: string[] = [];
   const vals: unknown[] = [];
   for (const [k, v] of Object.entries(body)) {

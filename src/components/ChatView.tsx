@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm } from '../lib/api';
 import { marked } from 'marked';
 
@@ -17,6 +17,8 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [error, setError] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
+  const [editingDate, setEditingDate] = useState(false);
+  const [dateDraft, setDateDraft] = useState('');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -109,6 +111,28 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
   function cancelRename() {
     setEditingTitle(false);
+  }
+
+  function startEditDate() {
+    if (!chat) return;
+    setDateDraft(new Date(chat.created_at).toISOString().slice(0, 10));
+    setEditingDate(true);
+  }
+
+  async function commitDate() {
+    if (!chat || !dateDraft) {
+      setEditingDate(false);
+      return;
+    }
+    const [y, m, d] = dateDraft.split('-').map(Number);
+    const iso = new Date(Date.UTC(y, m - 1, d)).toISOString();
+    updateChatLocally(chat.id, { created_at: iso });
+    setEditingDate(false);
+    await chats.update(chat.id, { created_at: iso });
+  }
+
+  function cancelDate() {
+    setEditingDate(false);
   }
 
   async function sendMessage() {
@@ -204,6 +228,33 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               {category.name}
             </span>
           )}
+          <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            {editingDate ? (
+              <input
+                type="date"
+                autoFocus
+                value={dateDraft}
+                onChange={(e) => setDateDraft(e.target.value)}
+                onBlur={commitDate}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitDate();
+                  if (e.key === 'Escape') cancelDate();
+                }}
+                className="bg-slate-800 border border-sky-500/50 text-white text-xs px-2 py-0.5 rounded outline-none"
+              />
+            ) : (
+              <button
+                onClick={startEditDate}
+                className="flex items-center gap-1 hover:text-sky-300 transition-colors cursor-pointer"
+                title="Change date"
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                <span className="truncate">
+                  {new Date(chat.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
         <select
           value={chat.model}
