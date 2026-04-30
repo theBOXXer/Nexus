@@ -17,8 +17,6 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [error, setError] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,15 +47,6 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     if (!chat) return;
     updateChatLocally(chat.id, { model });
     await chats.update(chat.id, { model });
-  }
-
-  async function copyFloating() {
-    if (!hoveredId) return;
-    const msg = msgs.find((m) => m.id === hoveredId);
-    if (!msg) return;
-    await navigator.clipboard.writeText(msg.content);
-    setCopiedId(hoveredId);
-    setTimeout(() => setCopiedId(null), 2000);
   }
 
   function startRename() {
@@ -202,7 +191,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
         <div className="max-w-3xl mx-auto space-y-6">
           {msgs.map((m) => (
-            <MessageBubble key={m.id} message={m} onHover={setHoveredId} />
+            <MessageBubble key={m.id} message={m} />
           ))}
           {sending && (
             <div className="flex gap-3">
@@ -222,17 +211,6 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
           )}
         </div>
       </div>
-
-      {hoveredId && (
-        <button
-          onClick={copyFloating}
-          style={{ position: 'fixed', right: 'calc(50% - 368px)', top: '50%', transform: 'translateY(-50%)', zIndex: 50 }}
-          className="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-700/50 bg-slate-800/80 backdrop-blur shadow-lg"
-          title="Copy"
-        >
-          {copiedId === hoveredId ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-        </button>
-      )}
 
       <div className="p-4 border-t border-slate-800 bg-slate-900/40">
         <div className="max-w-3xl mx-auto">
@@ -266,11 +244,18 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   );
 }
 
-function MessageBubble({ message, onHover }: { message: Message; onHover: (id: string | null) => void }) {
+function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(message.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
-    <div className={`flex gap-3 group ${isUser ? 'flex-row-reverse' : ''}`}>
+    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
         className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
           isUser ? 'bg-slate-700' : 'bg-gradient-to-br from-sky-500 to-emerald-500'
@@ -278,11 +263,7 @@ function MessageBubble({ message, onHover }: { message: Message; onHover: (id: s
       >
         {isUser ? <User className="w-4 h-4 text-slate-200" /> : <Bot className="w-4 h-4 text-white" />}
       </div>
-      <div
-        className={`min-w-0 max-w-[75%] ${isUser ? 'items-end' : ''}`}
-        onMouseEnter={isUser ? undefined : () => onHover(message.id)}
-        onMouseLeave={isUser ? undefined : () => onHover(null)}
-      >
+      <div className={`min-w-0 max-w-[75%] ${isUser ? 'items-end' : ''}`}>
         <div className={`flex items-center gap-2 mb-1 ${isUser ? 'flex-row-reverse' : ''}`}>
           <span className="text-sm font-semibold text-white">{isUser ? 'You' : 'Assistant'}</span>
           {message.model && !isUser && (
@@ -297,11 +278,20 @@ function MessageBubble({ message, onHover }: { message: Message; onHover: (id: s
             {message.content}
           </div>
         ) : (
-          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-800/60 text-slate-200 rounded-2xl rounded-bl-sm px-4 py-3">
-            <div
-              className="markdown-content"
-              dangerouslySetInnerHTML={{ __html: marked.parse(message.content) as string }}
-            />
+          <div className="flex items-start gap-1">
+            <div className="flex-1 text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-800/60 text-slate-200 rounded-2xl rounded-bl-sm px-4 py-3">
+              <div
+                className="markdown-content"
+                dangerouslySetInnerHTML={{ __html: marked.parse(message.content) as string }}
+              />
+            </div>
+            <button
+              onClick={handleCopy}
+              className="text-slate-500 hover:text-white transition-colors p-1 rounded-md hover:bg-slate-700/50 flex-shrink-0 mt-2"
+              title="Copy"
+            >
+              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+            </button>
           </div>
         )}
       </div>
