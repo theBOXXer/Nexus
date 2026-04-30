@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Hash } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm } from '../lib/api';
 
 interface Props {
@@ -243,6 +243,14 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(message.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
     <div className={`flex gap-3 group ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
@@ -263,13 +271,22 @@ function MessageBubble({ message }: { message: Message }) {
           </span>
         </div>
         <div
-          className={`text-[15px] leading-relaxed whitespace-pre-wrap break-words px-4 py-3 ${
+          className={`relative text-[15px] leading-relaxed whitespace-pre-wrap break-words px-4 py-3 ${
             isUser
               ? 'bg-slate-700/60 text-slate-200 rounded-2xl rounded-br-sm'
               : 'bg-slate-800/60 text-slate-200 rounded-2xl rounded-bl-sm'
           }`}
         >
           {message.content}
+          {!isUser && (
+            <button
+              onClick={handleCopy}
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-white transition-all p-1 rounded-md hover:bg-slate-700/50"
+              title="Copy"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          )}
         </div>
       </div>
     </div>
