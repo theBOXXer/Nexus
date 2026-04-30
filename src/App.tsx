@@ -34,7 +34,7 @@ function App() {
     setSession({ userId, email });
   }
 
-  const { categories, chats: chatList, archivedChats, refresh } = useChatData(session?.userId ?? null);
+  const { categories, chats: chatList, archivedChats, refresh, updateChatLocally } = useChatData(session?.userId ?? null);
 
   const activeChat = useMemo(
     () => chatList.find((c) => c.id === activeChatId) || null,
@@ -147,7 +147,7 @@ function App() {
           />
         ) : (
           <>
-            {tab === 'chat' && <ChatView chat={activeChat} category={activeCategory} onRefresh={refresh} />}
+            {tab === 'chat' && <ChatView chat={activeChat} category={activeCategory} onRefresh={refresh} updateChatLocally={updateChatLocally} />}
             {tab === 'calendar' && (
               <CalendarView chats={chatList} categories={categories} onSelectChat={handleSelectChat} />
             )}

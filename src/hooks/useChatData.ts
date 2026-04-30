@@ -16,6 +16,10 @@ export function useChatData(userId: string | null) {
     [allChats],
   );
 
+  const updateChatLocally = useCallback((chatId: string, updates: Partial<Chat>) => {
+    setAllChats((prev) => prev.map((c) => (c.id === chatId ? { ...c, ...updates } : c)));
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!userId) return;
     try {
@@ -39,5 +43,5 @@ export function useChatData(userId: string | null) {
     return () => clearInterval(interval);
   }, [userId, refresh]);
 
-  return { categories: cats, chats: activeChats, archivedChats, loading, refresh };
+  return { categories: cats, chats: activeChats, archivedChats, loading, refresh, updateChatLocally };
 }

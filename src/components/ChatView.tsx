@@ -6,9 +6,10 @@ interface Props {
   chat: Chat | null;
   category: Category | null;
   onRefresh: () => void;
+  updateChatLocally: (chatId: string, updates: Partial<Chat>) => void;
 }
 
-export default function ChatView({ chat, category, onRefresh }: Props) {
+export default function ChatView({ chat, category, onRefresh, updateChatLocally }: Props) {
   const [msgs, setMsgs] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -33,8 +34,8 @@ export default function ChatView({ chat, category, onRefresh }: Props) {
 
   async function changeModel(model: string) {
     if (!chat) return;
+    updateChatLocally(chat.id, { model });
     await chats.update(chat.id, { model });
-    onRefresh();
   }
 
   async function sendMessage() {
