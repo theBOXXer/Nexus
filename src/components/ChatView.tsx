@@ -22,6 +22,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const scrollRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shouldScrollRef = useRef(false);
 
   useEffect(() => {
     if (!chat) {
@@ -40,6 +41,11 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    if (shouldScrollRef.current) {
+      shouldScrollRef.current = false;
+      requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+      return;
+    }
     const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 60;
     if (atBottom) {
       el.scrollTop = el.scrollHeight;
@@ -106,6 +112,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     setInput('');
     setSending(true);
     setError(null);
+    shouldScrollRef.current = true;
 
     try {
       const userMsg = await messages.create({ chat_id: chat.id, role: 'user', content });

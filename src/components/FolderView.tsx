@@ -14,6 +14,8 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
   const [catDragIdx, setCatDragIdx] = useState<number | null>(null);
+  const [editingCat, setEditingCat] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
 
   function onDragStartChat(e: React.DragEvent, chatId: string) {
     e.dataTransfer.setData('text/plain', chatId);
@@ -46,6 +48,18 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
     if (!catId) return;
     await categories.update(catId, { position: targetIdx });
     onRefresh();
+  }
+
+  async function renameCat(id: string) {
+    if (!editName.trim()) { setEditingCat(null); return; }
+    await categories.update(id, { name: editName.trim() });
+    setEditingCat(null);
+    onRefresh();
+  }
+
+  function startRename(id: string, name: string) {
+    setEditingCat(id);
+    setEditName(name);
   }
 
   const buckets: { id: string | null; name: string; color: string; chats: Chat[]; icon: typeof Folder }[] = [
@@ -107,7 +121,28 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
                     <Icon className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-white font-semibold truncate">{b.name}</div>
+                    {b.id && editingCat === b.id ? (
+                      <input
+                        autoFocus
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onBlur={() => renameCat(b.id!)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') renameCat(b.id!);
+                          if (e.key === 'Escape') setEditingCat(null);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-slate-800 text-white text-sm font-semibold px-1 rounded outline-none w-full"
+                      />
+                    ) : (
+                      <div
+                        onClick={b.id ? (e) => { e.stopPropagation(); startRename(b.id!, b.name); } : undefined}
+                        className={`text-white font-semibold truncate ${b.id ? 'cursor-pointer hover:text-sky-300 transition-colors' : ''}`}
+                        title={b.id ? 'Click to rename' : undefined}
+                      >
+                        {b.name}
+                      </div>
+                    )}
                     <div className="text-xs text-slate-500">{b.chats.length} {b.chats.length === 1 ? 'chat' : 'chats'}</div>
                   </div>
                   {b.id && catDragIdx !== null && (
