@@ -372,7 +372,12 @@ async function handleLLMChat(req: Request, env: Env): Promise<Response> {
         if (!imgRes.ok) continue;
         const imgBuffer = await imgRes.arrayBuffer();
         const mediaType = imgRes.headers.get('Content-Type') || 'image/png';
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
+        const bytes = new Uint8Array(imgBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += 8192) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+        }
+        const base64 = btoa(binary);
         parts.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } });
       } catch { continue; }
     }

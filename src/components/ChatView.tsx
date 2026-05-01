@@ -204,7 +204,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
       const userMsg = await messages.create({ chat_id: chat.id, role: 'user', content, images: imageUrls.length > 0 ? imageUrls : undefined });
       setMsgs((prev) => [...prev, userMsg]);
 
-      if (msgs.length === 0 && content) {
+      if (msgs.length === 0 && content && chat.title === 'New Chat') {
         const title = content.length > 50 ? content.slice(0, 50) + '...' : content;
         await chats.update(chat.id, { title });
       }
