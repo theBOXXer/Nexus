@@ -200,7 +200,7 @@ function App() {
         </div>
 
         <div
-          className={`flex-1 flex flex-col md:overflow-hidden transition-transform duration-200 ease-out
+          className={`flex-1 flex flex-col overflow-hidden transition-transform duration-200 ease-out
             ${isMobile && sidebarOpen ? 'translate-x-64' : 'translate-x-0'}
             md:translate-x-0
           `}
