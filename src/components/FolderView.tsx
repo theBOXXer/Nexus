@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Folder, FolderOpen, MessageSquare, Inbox, GripVertical } from 'lucide-react';
+import { Folder, FolderOpen, MessageSquare, Inbox, GripVertical, Archive, FolderTree } from 'lucide-react';
 import { Chat, Category, CATEGORY_COLORS, chats, categories } from '../lib/api';
 
 interface Props {
@@ -10,7 +10,10 @@ interface Props {
   updateChatLocally: (chatId: string, updates: Partial<Chat>) => void;
 }
 
-export default function FolderView({ chats, categories: catsList, onSelectChat, onRefresh, updateChatLocally }: Props) {
+type SubTab = 'folders' | 'unfiled';
+
+export default function FolderView({ chats: allChats, categories: catsList, onSelectChat, onRefresh, updateChatLocally }: Props) {
+  const [subTab, setSubTab] = useState<SubTab>('folders');
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
   const [catDragIdx, setCatDragIdx] = useState<number | null>(null);
@@ -18,6 +21,8 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
   const [editName, setEditName] = useState('');
   const [colorPickerCat, setColorPickerCat] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+
+  const unfiledChats = allChats.filter((c) => !c.category_id);
 
   useEffect(() => {
     if (!colorPickerCat) return;
@@ -90,31 +95,49 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
     onRefresh();
   }
 
-  const buckets: { id: string | null; name: string; color: string; chats: Chat[]; icon: typeof Folder }[] = [
-    {
-      id: null,
-      name: 'Unfiled',
-      color: '#64748b',
-      chats: chats.filter((c) => !c.category_id),
-      icon: Inbox,
-    },
-    ...catsList.map((cat) => ({
-      id: cat.id,
-      name: cat.name,
-      color: cat.color,
-      chats: chats.filter((c) => c.category_id === cat.id),
-      icon: Folder,
-    })),
-  ];
+  const buckets: { id: string; name: string; color: string; chats: Chat[]; icon: typeof Folder }[] = catsList.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    color: cat.color,
+    chats: allChats.filter((c) => c.category_id === cat.id),
+    icon: Folder,
+  }));
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 overflow-hidden">
       <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40">
-        <h2 className="font-semibold text-slate-900 dark:text-white">Folders</h2>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setSubTab('folders')}
+            className={`flex items-center gap-2 px-4 h-10 text-sm font-medium transition-all border-b-2 -mb-px ${
+              subTab === 'folders'
+                ? 'border-sky-500 text-slate-900 dark:text-white'
+                : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <FolderTree className="w-4 h-4" />
+            Folders
+          </button>
+          <button
+            onClick={() => setSubTab('unfiled')}
+            className={`flex items-center gap-2 px-4 h-10 text-sm font-medium transition-all border-b-2 -mb-px ${
+              subTab === 'unfiled'
+                ? 'border-sky-500 text-slate-900 dark:text-white'
+                : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <Archive className="w-4 h-4" />
+            Unfiled
+            {unfiledChats.length > 0 && (
+              <span className="text-xs bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">{unfiledChats.length}</span>
+            )}
+          </button>
+        </div>
         <span className="text-xs text-slate-400 dark:text-slate-500">Drag chats between folders · Drag categories to reorder</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
+        {subTab === 'folders' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-w-7xl mx-auto">
           {buckets.map((b, idx) => {
             const bucketId = b.id || '_unfiled';
@@ -231,6 +254,39 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
             );
           })}
         </div>
+        ) : (
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-2 mb-4">
+            <Archive className="w-5 h-5 text-amber-400" />
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Unfiled Chats</h3>
+            <span className="text-xs text-slate-400 dark:text-slate-500">({unfiledChats.length})</span>
+          </div>
+          {unfiledChats.length === 0 ? (
+            <div className="text-center text-sm text-slate-400 dark:text-slate-500 py-12 italic">
+              <Inbox className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              No unfiled chats — all chats are in folders
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {unfiledChats.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => onSelectChat(c.id)}
+                  className="group flex items-center gap-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-800/70 cursor-pointer transition-colors"
+                >
+                  <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-slate-700 dark:text-slate-200 truncate">{c.title}</div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                      {new Date(c.updated_at).toLocaleDateString()} · {c.model}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        )}
       </div>
     </div>
   );
