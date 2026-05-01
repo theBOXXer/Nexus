@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ChevronDown, ChevronRight, Plus, MessageSquare, Folder, Archive, Pencil, Trash2, LogOut, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, MessageSquare, Folder, Archive, Pencil, Trash2, LogOut } from 'lucide-react';
 import { Category, Chat, categories, chats, CATEGORY_COLORS } from '../lib/api';
 
 interface Props {
@@ -12,8 +12,6 @@ interface Props {
   onSignOut: () => void;
   onRefresh: () => void;
   updateChatLocally: (chatId: string, updates: Partial<Chat>) => void;
-  isMobile?: boolean;
-  onClose?: () => void;
 }
 
 export default function Sidebar({
@@ -26,8 +24,6 @@ export default function Sidebar({
   onSignOut,
   onRefresh,
   updateChatLocally,
-  isMobile,
-  onClose,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<string | null>(null);
@@ -155,11 +151,6 @@ export default function Sidebar({
           <MessageSquare className="w-4 h-4 text-white" strokeWidth={2.5} />
         </div>
         <span className="text-slate-900 dark:text-white font-semibold">Nexus</span>
-        {isMobile && (
-          <button onClick={onClose} className="ml-auto p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
-        )}
       </div>
 
       <div className="flex-1 overflow-y-auto py-3 px-2">

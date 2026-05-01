@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MessageSquare, Calendar, FolderTree, Settings as SettingsIcon, Sun, Moon, Menu, X } from 'lucide-react';
+import { MessageSquare, Calendar, FolderTree, Settings as SettingsIcon, Sun, Moon } from 'lucide-react';
 import { auth, clearToken, setToken, chats } from './lib/api';
 import { useChatData } from './hooks/useChatData';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -18,14 +18,6 @@ function App() {
   const [tab, setTab] = useState<Tab>('chat');
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-  useEffect(() => {
-    function onResize() { setIsMobile(window.innerWidth < 768); }
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
 
   useEffect(() => {
     const token = auth.getToken();
@@ -91,7 +83,6 @@ function App() {
     setActiveChatId(id);
     setTab('chat');
     setShowSettings(false);
-    if (isMobile) setSidebarOpen(false);
   }
 
   function handleSignOut() {
@@ -133,12 +124,6 @@ function App() {
     <ThemeProvider>
     <div className="h-screen flex flex-col bg-white dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden">
       <div className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 backdrop-blur flex items-center px-4 flex-shrink-0">
-        <button
-          onClick={() => setSidebarOpen(v => !v)}
-          className="block md:hidden p-1.5 mr-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 flex-shrink-0"
-        >
-          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
         <div className="flex items-center gap-1 flex-1 justify-center">
           {tabs.map((t) => {
             const Icon = t.icon;
@@ -177,34 +162,18 @@ function App() {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <div
-          className={`flex-shrink-0 w-64 overflow-y-auto border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 h-full transition-transform duration-200 ease-out
-            fixed md:static inset-y-0 md:inset-auto left-0 md:left-auto z-50 md:z-auto
-            ${isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'}
-            md:translate-x-0
-          `}
-        >
-          <Sidebar
-            categories={categories}
-            chats={chatList}
-            activeChatId={activeChatId}
-            onSelectChat={handleSelectChat}
-            onNewChat={handleNewChat}
-            userEmail={session.email}
-            onSignOut={handleSignOut}
-            onRefresh={refresh}
-            updateChatLocally={updateChatLocally}
-            isMobile={isMobile}
-            onClose={() => setSidebarOpen(false)}
-          />
-        </div>
+        <Sidebar
+          categories={categories}
+          chats={chatList}
+          activeChatId={activeChatId}
+          onSelectChat={handleSelectChat}
+          onNewChat={handleNewChat}
+          userEmail={session.email}
+          onSignOut={handleSignOut}
+          onRefresh={refresh}
+          updateChatLocally={updateChatLocally}
+        />
 
-        <div
-          className={`flex-1 flex flex-col overflow-hidden transition-transform duration-200 ease-out
-            ${isMobile && sidebarOpen ? 'translate-x-64' : 'translate-x-0'}
-            md:translate-x-0
-          `}
-        >
         {showSettings ? (
           <Settings
             archivedChats={archivedChats}
@@ -222,7 +191,6 @@ function App() {
             )}
           </>
         )}
-        </div>
       </div>
     </div>
     </ThemeProvider>
