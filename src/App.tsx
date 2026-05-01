@@ -131,7 +131,7 @@ function App() {
 
   return (
     <ThemeProvider>
-    <div className="h-screen flex flex-col bg-white dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden">
+    <div className="h-dvh flex flex-col bg-white dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden">
       <div className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 backdrop-blur flex items-center px-4 flex-shrink-0">
         <button
           onClick={() => setSidebarOpen(v => !v)}

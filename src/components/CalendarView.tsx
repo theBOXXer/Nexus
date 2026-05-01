@@ -89,8 +89,8 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
   const monthLabel = month.toLocaleString(undefined, { month: 'long', year: 'numeric' });
 
   return (
-    <div className="flex-1 flex bg-white dark:bg-slate-950 overflow-hidden">
-      <div className="flex-1 flex flex-col min-w-0">
+    <div className="flex-1 flex bg-white dark:bg-slate-950 overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40">
           <h2 className="font-semibold text-slate-900 dark:text-white">Calendar</h2>
           <div className="flex items-center gap-2">

@@ -104,7 +104,7 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
   }));
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 overflow-hidden">
+    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 overflow-hidden min-h-0">
       <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40">
         <div className="flex items-center gap-1">
           <button

@@ -289,7 +289,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const currentModel = MODELS.find((m) => m.id === chat.model);
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 min-w-0" onDragOver={handleDragOver} onDrop={handleDrop} onPaste={handlePaste}>
+    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 min-w-0 min-h-0" onDragOver={handleDragOver} onDrop={handleDrop} onPaste={handlePaste}>
       <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40 backdrop-blur">
         <div className="flex items-center gap-2 min-w-0">
           <Hash className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
