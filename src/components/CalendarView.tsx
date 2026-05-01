@@ -209,7 +209,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
         </div>
       </div>
 
-      <div className="w-80 border-l border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 flex flex-col">
+      <div className="hidden md:flex md:flex-col w-80 border-l border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40">
         <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5">
           <span className="font-semibold text-slate-900 dark:text-white text-sm">
             {selectedDay ? new Date(selectedDay).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'All Chats'}
