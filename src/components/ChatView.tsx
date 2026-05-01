@@ -186,20 +186,16 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     setError(null);
     shouldScrollRef.current = true;
 
-    const imageUrls: string[] = [];
+    let imageUrls: string[] = [];
     if (pendingImages.length > 0) {
-      const uploads = new Promise<void>((resolve) => {
-        let done = 0;
-        pendingImages.forEach(async (file, idx) => {
-          try {
-            const res = await upload.image(file);
-            imageUrls[idx] = res.url;
-          } catch { /* skip failed uploads */ }
-          done++;
-          if (done === pendingImages.length) resolve();
-        });
-      });
-      await uploads;
+      const results = await Promise.all(
+        pendingImages.map((file) => upload.image(file).then((r) => r.url).catch(() => null))
+      );
+      imageUrls = results.filter((u): u is string => u !== null);
+      if (imageUrls.length !== pendingImages.length) {
+        setError('Some images failed to upload. They will not be included.');
+      }
+      previewUrls.forEach((u) => URL.revokeObjectURL(u));
       setPendingImages([]);
       setPreviewUrls([]);
     }
@@ -258,7 +254,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const currentModel = MODELS.find((m) => m.id === chat.model);
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 min-w-0" onDragOver={handleDragOver} onDrop={handleDrop}>
+    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 min-w-0" onDragOver={handleDragOver} onDrop={handleDrop} onPaste={handlePaste}>
       <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40 backdrop-blur">
         <div className="flex items-center gap-2 min-w-0">
           <Hash className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
@@ -410,7 +406,6 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onPaste={handlePaste}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
