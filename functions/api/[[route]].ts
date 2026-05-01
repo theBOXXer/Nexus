@@ -253,7 +253,7 @@ async function listMessages(req: Request, env: Env, userId: string): Promise<Res
 
 async function createMessage(req: Request, env: Env, userId: string): Promise<Response> {
   const { chat_id, role, content, model, images } = await req.json() as { chat_id?: string; role?: string; content?: string; model?: string; images?: string[] };
-  if (!chat_id || !content) return error('chat_id and content required');
+  if (!chat_id || (!content && (!images || images.length === 0))) return error('chat_id and content required');
   const chat = await env.DB.prepare('SELECT id FROM chats WHERE id = ? AND user_id = ?').bind(chat_id, userId).first();
   if (!chat) return error('Chat not found', 404);
   const id = crypto.randomUUID();
