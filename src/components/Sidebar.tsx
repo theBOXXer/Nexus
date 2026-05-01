@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ChevronDown, ChevronRight, Plus, MessageSquare, Folder, Archive, Pencil, Trash2, LogOut, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, MessageSquare, Folder, Archive, Pencil, Trash2, LogOut, X, Settings as SettingsIcon } from 'lucide-react';
 import { Category, Chat, categories, chats, CATEGORY_COLORS } from '../lib/api';
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   onNewChat: (categoryId: string | null) => void;
   userEmail: string;
   onSignOut: () => void;
+  onSettings: () => void;
   onRefresh: () => void;
   updateChatLocally: (chatId: string, updates: Partial<Chat>) => void;
   isMobile?: boolean;
@@ -24,6 +25,7 @@ export default function Sidebar({
   onNewChat,
   userEmail,
   onSignOut,
+  onSettings,
   onRefresh,
   updateChatLocally,
   isMobile,
@@ -311,19 +313,34 @@ export default function Sidebar({
       </div>
 
       <div className="border-t border-slate-200 dark:border-slate-800 px-3 py-3 flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-700 dark:text-slate-200 flex-shrink-0">
-          {userEmail[0]?.toUpperCase()}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-xs text-slate-600 dark:text-slate-300 truncate">{userEmail}</div>
-        </div>
         <button
-          onClick={onSignOut}
-          title="Sign out"
-          className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+          onClick={onSettings}
+          className="flex items-center gap-2 flex-1 min-w-0 rounded-lg p-1.5 -m-1 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition-colors"
+          title="Settings"
         >
-          <LogOut className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-700 dark:text-slate-200 flex-shrink-0">
+            {userEmail[0]?.toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0 text-left">
+            <div className="text-xs text-slate-600 dark:text-slate-300 truncate">{userEmail}</div>
+          </div>
         </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={onSettings}
+            className="w-7 h-7 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 flex items-center justify-center transition-colors"
+            title="Settings"
+          >
+            <SettingsIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onSignOut}
+            title="Sign out"
+            className="w-7 h-7 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 flex items-center justify-center transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

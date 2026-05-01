@@ -165,7 +165,7 @@ function App() {
           <ThemeToggle />
           <button
             onClick={() => setShowSettings((v) => !v)}
-            className={`flex items-center gap-2 px-3.5 h-8 rounded-lg text-sm font-medium transition-all ${
+            className={`hidden md:flex items-center gap-2 px-3.5 h-8 rounded-lg text-sm font-medium transition-all ${
               showSettings
                 ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -193,6 +193,7 @@ function App() {
             onNewChat={handleNewChat}
             userEmail={session.email}
             onSignOut={handleSignOut}
+            onSettings={() => { setShowSettings(true); if (isMobile) setSidebarOpen(false); }}
             onRefresh={refresh}
             updateChatLocally={updateChatLocally}
             isMobile={isMobile}
