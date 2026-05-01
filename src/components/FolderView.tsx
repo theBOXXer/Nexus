@@ -70,7 +70,7 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
 
     const reordered = [...catsList];
     const [moved] = reordered.splice(srcIdx, 1);
-    const insertAt = targetIdx > srcIdx ? targetIdx - 1 : targetIdx;
+    const insertAt = targetIdx;
     reordered.splice(insertAt, 0, moved);
 
     await Promise.all(reordered.map((cat, i) => categories.update(cat.id, { position: i })));
