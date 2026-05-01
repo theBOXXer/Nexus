@@ -66,11 +66,19 @@ export default function ImageViewer({ src, alt, onClose }: Props) {
     setOffset({ x: 0, y: 0 });
   }
 
-  function handleDownload() {
-    const a = document.createElement('a');
-    a.href = src;
-    a.download = alt || 'image';
-    a.click();
+  async function handleDownload() {
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = alt || 'image.png';
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(src, '_blank');
+    }
   }
 
   return (
