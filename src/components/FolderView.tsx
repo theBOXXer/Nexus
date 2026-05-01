@@ -133,7 +133,7 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
             )}
           </button>
         </div>
-        <span className="text-xs text-slate-400 dark:text-slate-500">Drag chats between folders · Drag categories to reorder</span>
+        <span className="hidden md:inline text-xs text-slate-400 dark:text-slate-500">Drag chats between folders · Drag categories to reorder</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
