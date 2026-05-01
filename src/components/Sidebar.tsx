@@ -29,6 +29,8 @@ export default function Sidebar({
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [dragSrcIdx, setDragSrcIdx] = useState<number | null>(null);
+  const [dropInsertIdx, setDropInsertIdx] = useState<number | null>(null);
 
   const uncategorized = allChats.filter((c) => !c.category_id);
 
@@ -66,6 +68,39 @@ export default function Sidebar({
     if (!chatId) return;
     updateChatLocally(chatId, { category_id: categoryId });
     await chats.update(chatId, { category_id: categoryId });
+    onRefresh();
+  }
+
+  function handleDragStartCat(e: React.DragEvent, idx: number, catId: string) {
+    e.dataTransfer.setData('text/category', catId);
+    e.dataTransfer.effectAllowed = 'move';
+    setDragSrcIdx(idx);
+    setDropInsertIdx(null);
+  }
+
+  function handleDragEndCat() {
+    setDragSrcIdx(null);
+    setDropInsertIdx(null);
+  }
+
+  async function handleDropCat(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const catId = e.dataTransfer.getData('text/category');
+    if (!catId || dropInsertIdx === null) return;
+
+    const srcIdx = cats.findIndex((c) => c.id === catId);
+    if (srcIdx === -1) return;
+    const targetIdx = dropInsertIdx;
+    if (srcIdx === targetIdx || srcIdx === targetIdx - 1) return;
+
+    const reordered = [...cats];
+    const [moved] = reordered.splice(srcIdx, 1);
+    reordered.splice(targetIdx > srcIdx ? targetIdx - 1 : targetIdx, 0, moved);
+
+    await Promise.all(reordered.map((c, i) => categories.update(c.id, { position: i })));
+    setDragSrcIdx(null);
+    setDropInsertIdx(null);
     onRefresh();
   }
 
@@ -148,19 +183,51 @@ export default function Sidebar({
           </button>
         </div>
 
-        {cats.map((cat) => {
+        {cats.map((cat, idx) => {
           const catChats = allChats.filter((c) => c.category_id === cat.id);
           const isCollapsed = collapsed[cat.id];
-          return (
+          const isDragging = dragSrcIdx === idx;
+          return [
+            dragSrcIdx !== null && dropInsertIdx === idx && !isDragging ? (
+              <div key={`ins-${idx}`} className="h-0.5 bg-sky-500 rounded-full mx-2" />
+            ) : null,
             <div
               key={cat.id}
-              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-              onDragEnter={() => setDragOver(cat.id)}
-              onDragLeave={(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as HTMLElement)) setDragOver(null); }}
-              onDrop={(e) => handleDrop(e, cat.id)}
-              className={`mb-2 rounded-lg transition-colors ${dragOver === cat.id ? 'bg-sky-500/10 ring-2 ring-sky-500/30' : ''}`}
+              onDragOver={(e) => {
+                if (e.dataTransfer.types.includes('text/category')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  const thr = Math.min(rect.height, 36);
+                  setDropInsertIdx(e.clientY < rect.top + thr ? idx : idx + 1);
+                  return;
+                }
+                e.preventDefault(); e.stopPropagation();
+              }}
+              onDragEnter={() => { if (dragSrcIdx !== null) return; setDragOver(cat.id); }}
+              onDragLeave={(e) => {
+                if (dragSrcIdx !== null) return;
+                if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as HTMLElement)) setDragOver(null);
+              }}
+              onDrop={(e) => {
+                if (e.dataTransfer.types.includes('text/category')) { handleDropCat(e); return; }
+                handleDrop(e, cat.id);
+              }}
+              className={`mb-2 rounded-lg transition-colors ${isDragging ? 'opacity-40' : ''} ${dragOver === cat.id ? 'bg-sky-500/10 ring-2 ring-sky-500/30' : ''}`}
             >
-              <div className="flex items-center justify-between px-2 py-1 group rounded-md hover:bg-slate-200/40 dark:hover:bg-slate-800/40">
+              <div
+                draggable
+                onDragStart={(e) => handleDragStartCat(e, idx, cat.id)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setDropInsertIdx(e.clientY < rect.top + rect.height / 2 ? idx : idx + 1);
+                }}
+                onDrop={(e) => handleDropCat(e)}
+                onDragEnd={handleDragEndCat}
+                className="flex items-center justify-between px-2 py-1 group rounded-md hover:bg-slate-200/40 dark:hover:bg-slate-800/40 cursor-grab active:cursor-grabbing"
+              >
                 <button
                   onClick={() => toggleCollapse(cat.id)}
                   className="flex items-center gap-1.5 flex-1 min-w-0"
@@ -214,8 +281,11 @@ export default function Sidebar({
                 <div className="ml-5 text-xs text-slate-400 dark:text-slate-600 italic py-1 px-2">Drop chats here</div>
               )}
             </div>
-          );
+          ];
         })}
+        {dragSrcIdx !== null && dropInsertIdx === cats.length && dragSrcIdx !== cats.length - 1 && (
+          <div className="h-0.5 bg-sky-500 rounded-full mx-2" />
+        )}
 
         {cats.length === 0 && (
           <div className="px-3 py-4 text-xs text-slate-400 dark:text-slate-600 text-center">
