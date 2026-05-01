@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { ChevronDown, ChevronRight, Plus, MessageSquare, Folder, Archive, Pencil, Trash2, LogOut } from 'lucide-react';
 import { Category, Chat, categories, chats, CATEGORY_COLORS } from '../lib/api';
 
@@ -31,6 +31,12 @@ export default function Sidebar({
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [dragSrcIdx, setDragSrcIdx] = useState<number | null>(null);
   const [dropInsertIdx, setDropInsertIdx] = useState<number | null>(null);
+  const dropInsertIdxRef = useRef<number | null>(null);
+
+  function setInsertIdx(v: number | null) {
+    dropInsertIdxRef.current = v;
+    setDropInsertIdx(v);
+  }
 
   const uncategorized = allChats.filter((c) => !c.category_id);
 
@@ -75,23 +81,23 @@ export default function Sidebar({
     e.dataTransfer.setData('text/category', catId);
     e.dataTransfer.effectAllowed = 'move';
     setDragSrcIdx(idx);
-    setDropInsertIdx(null);
+    setInsertIdx(null);
   }
 
   function handleDragEndCat() {
     setDragSrcIdx(null);
-    setDropInsertIdx(null);
+    setInsertIdx(null);
   }
 
   async function handleDropCat(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
     const catId = e.dataTransfer.getData('text/category');
-    if (!catId || dropInsertIdx === null) return;
+    const targetIdx = dropInsertIdxRef.current;
+    if (!catId || targetIdx === null) return;
 
     const srcIdx = cats.findIndex((c) => c.id === catId);
     if (srcIdx === -1) return;
-    const targetIdx = dropInsertIdx;
     if (srcIdx === targetIdx || srcIdx === targetIdx - 1) return;
 
     const reordered = [...cats];
@@ -100,7 +106,7 @@ export default function Sidebar({
 
     await Promise.all(reordered.map((c, i) => categories.update(c.id, { position: i })));
     setDragSrcIdx(null);
-    setDropInsertIdx(null);
+    setInsertIdx(null);
     onRefresh();
   }
 
@@ -199,7 +205,7 @@ export default function Sidebar({
                   e.stopPropagation();
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                   const thr = Math.min(rect.height, 36);
-                  setDropInsertIdx(e.clientY < rect.top + thr ? idx : idx + 1);
+                  setInsertIdx(e.clientY < rect.top + thr ? idx : idx + 1);
                   return;
                 }
                 e.preventDefault(); e.stopPropagation();
@@ -222,7 +228,7 @@ export default function Sidebar({
                   e.preventDefault();
                   e.stopPropagation();
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                  setDropInsertIdx(e.clientY < rect.top + rect.height / 2 ? idx : idx + 1);
+                  setInsertIdx(e.clientY < rect.top + rect.height / 2 ? idx : idx + 1);
                 }}
                 onDrop={(e) => handleDropCat(e)}
                 onDragEnd={handleDragEndCat}
