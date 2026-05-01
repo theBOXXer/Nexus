@@ -59,7 +59,16 @@ export default function FolderView({ chats, categories: catsList, onSelectChat, 
     setCatDragIdx(null);
     const catId = e.dataTransfer.getData('text/category');
     if (!catId) return;
-    await categories.update(catId, { position: targetIdx });
+
+    const srcIdx = catsList.findIndex((c) => c.id === catId);
+    if (srcIdx === -1 || srcIdx === targetIdx) return;
+
+    const reordered = [...catsList];
+    const [moved] = reordered.splice(srcIdx, 1);
+    const insertAt = targetIdx > srcIdx ? targetIdx - 1 : targetIdx;
+    reordered.splice(insertAt, 0, moved);
+
+    await Promise.all(reordered.map((cat, i) => categories.update(cat.id, { position: i })));
     onRefresh();
   }
 
