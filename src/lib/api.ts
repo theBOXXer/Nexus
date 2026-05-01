@@ -131,6 +131,7 @@ export const MODELS = [
   { id: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku', provider: 'Anthropic' },
   { id: 'deepseek-chat', label: 'DeepSeek V3', provider: 'DeepSeek' },
   { id: 'deepseek-reasoner', label: 'DeepSeek R1', provider: 'DeepSeek' },
+  { id: 'none', label: 'Notes (No AI)', provider: 'Local' },
 ] as const;
 
 export const CATEGORY_COLORS = [

@@ -152,6 +152,11 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
         await chats.update(chat.id, { title });
       }
 
+      if (chat.model === 'none') {
+        setSending(false);
+        return;
+      }
+
       const conversation = [...msgs, { role: 'user', content } as Message].map((m) => ({
         role: m.role,
         content: m.content,
