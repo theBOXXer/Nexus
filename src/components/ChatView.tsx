@@ -1,7 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2 } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm, upload } from '../lib/api';
-import { marked } from 'marked';
+import { marked, Renderer } from 'marked';
+
+marked.use({
+  gfm: true,
+  breaks: true,
+  renderer: new class extends Renderer {
+    link({ href, text }: { href: string; text: string }) {
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    }
+    image({ href, text, title }: { href: string; text: string; title: string | null }) {
+      return `<img src="${href}" alt="${text}"${title ? ` title="${title}"` : ''}>`;
+    }
+  },
+});
+
+function linkify(text: string) {
+  const regex = /(https?:\/\/[^\s<>"')\]]+)/g;
+  const tokens = text.split(regex);
+  return tokens.map((t, i) => {
+    if (regex.test(t)) {
+      return `<a href="${t}" target="_blank" rel="noopener noreferrer" class="text-sky-500 hover:underline">${t}</a>`;
+    }
+    return t;
+  }).join('');
+}
 
 interface Props {
   chat: Chat | null;
@@ -516,13 +540,16 @@ function MessageBubble({ message, onHover, onLeave, onDelete }: { message: Messa
                 ))}
               </div>
             )}
-            {message.content}
+            <div
+              className="markdown-content"
+              dangerouslySetInnerHTML={{ __html: linkify(message.content) }}
+            />
           </div>
         ) : (
           <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-200/60 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 rounded-2xl rounded-bl-sm px-4 py-3">
             <div
               className="markdown-content"
-              dangerouslySetInnerHTML={{ __html: marked.parse(message.content) as string }}
+              dangerouslySetInnerHTML={{ __html: marked.parse(linkify(message.content)) as string }}
             />
           </div>
         )}
