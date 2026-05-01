@@ -123,39 +123,42 @@ function App() {
   return (
     <ThemeProvider>
     <div className="h-screen flex flex-col bg-white dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden">
-      <div className="h-12 border-b border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 backdrop-blur flex items-center px-4 gap-1 flex-shrink-0">
-        {tabs.map((t) => {
-          const Icon = t.icon;
-          const active = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => { setTab(t.id); setShowSettings(false); }}
-              className={`flex items-center gap-2 px-3.5 h-8 rounded-lg text-sm font-medium transition-all ${
-                active
-                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {t.label}
-            </button>
-          );
-        })}
-        <div className="flex-1" />
-        <ThemeToggle />
-        <button
-          onClick={() => setShowSettings((v) => !v)}
-          className={`flex items-center gap-2 px-3.5 h-8 rounded-lg text-sm font-medium transition-all ${
-            showSettings
-              ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-          }`}
-          title="Settings"
-        >
-          <SettingsIcon className="w-4 h-4" />
-          Settings
-        </button>
+      <div className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 backdrop-blur flex items-center px-4 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-1 justify-center">
+          {tabs.map((t) => {
+            const Icon = t.icon;
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => { setTab(t.id); setShowSettings(false); }}
+                className={`flex items-center gap-2 px-4 h-12 text-sm font-medium transition-all border-b-2 -mb-px ${
+                  active
+                    ? 'border-sky-500 text-slate-900 dark:text-white'
+                    : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-1 ml-auto">
+          <ThemeToggle />
+          <button
+            onClick={() => setShowSettings((v) => !v)}
+            className={`flex items-center gap-2 px-3.5 h-8 rounded-lg text-sm font-medium transition-all ${
+              showSettings
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+            }`}
+            title="Settings"
+          >
+            <SettingsIcon className="w-4 h-4" />
+            Settings
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
