@@ -550,7 +550,7 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit }: { messag
         {isUser ? <User className="w-4 h-4 text-slate-700 dark:text-slate-200" /> : <Bot className="w-4 h-4 text-white" />}
       </div>
       <div
-        className={`min-w-0 max-w-[75%] group relative ${isUser ? 'items-end' : ''} ${editing ? '!min-w-[200px]' : ''}`}
+        className={`min-w-0 max-w-[75%] group relative ${isUser ? 'items-end' : ''} ${editing ? '!min-w-[600px]' : ''}`}
         onMouseEnter={isUser ? undefined : () => onHover(message.id)}
         onMouseLeave={isUser ? undefined : onLeave}
       >
@@ -564,7 +564,7 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit }: { messag
           </span>
         </div>
         {editing ? (
-          <div className={`w-full min-w-[200px] rounded-2xl ${isUser ? 'rounded-br-sm' : 'rounded-bl-sm'} px-4 py-3 ${isUser ? 'bg-slate-300/60 dark:bg-slate-700/60' : 'bg-slate-200/60 dark:bg-slate-800/60'}`}>
+          <div className={`w-full min-w-[600px] rounded-2xl ${isUser ? 'rounded-br-sm' : 'rounded-bl-sm'} px-4 py-3 ${isUser ? 'bg-slate-300/60 dark:bg-slate-700/60' : 'bg-slate-200/60 dark:bg-slate-800/60'}`}>
             <textarea
               ref={textareaRef}
               autoFocus
