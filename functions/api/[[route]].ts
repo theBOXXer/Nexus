@@ -104,7 +104,7 @@ function error(message: string, status = 400): Response {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
@@ -263,6 +263,22 @@ async function createMessage(req: Request, env: Env, userId: string): Promise<Re
   await env.DB.prepare('UPDATE chats SET updated_at = ? WHERE id = ?').bind(new Date().toISOString(), chat_id).run();
   const row = await env.DB.prepare('SELECT * FROM messages WHERE id = ?').bind(id).first();
   return json(row, 201);
+}
+
+async function updateMessage(req: Request, env: Env, userId: string, msgId: string): Promise<Response> {
+  const { content, images } = await req.json() as { content?: string; images?: string[] };
+  const msg = await env.DB.prepare('SELECT m.*, c.user_id FROM messages m JOIN chats c ON m.chat_id = c.id WHERE m.id = ?').bind(msgId).first<{ id: string; user_id: string }>();
+  if (!msg || msg.user_id !== userId) return error('Message not found', 404);
+
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  if (content !== undefined) { sets.push('content = ?'); vals.push(content); }
+  if (images !== undefined) { sets.push('images = ?'); vals.push(JSON.stringify(images)); }
+  if (sets.length === 0) return error('No valid fields');
+  vals.push(msgId);
+  await env.DB.prepare(`UPDATE messages SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
+  const updated = await env.DB.prepare('SELECT * FROM messages WHERE id = ?').bind(msgId).first();
+  return json(updated);
 }
 
 // ─── Image Upload ────────────────────────────────────────────────────────────
@@ -490,6 +506,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const res = await createMessage(request, env, userId);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
+    }
+    const msgMatch = path.match(/^\/messages\/(.+)$/);
+    if (msgMatch) {
+      const msgId = msgMatch[1];
+      if (request.method === 'PATCH') {
+        const res = await updateMessage(request, env, userId, msgId);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
     }
 
     // LLM Chat

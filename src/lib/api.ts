@@ -49,6 +49,10 @@ function del<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'DELETE' });
 }
 
+function patch<T>(path: string, body?: unknown): Promise<T> {
+  return request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
+}
+
 export type Category = {
   id: string;
   user_id: string;
@@ -111,6 +115,8 @@ export const messages = {
   list: (chatId: string) => get<Message[]>(`/messages?chat_id=${encodeURIComponent(chatId)}`),
   create: (data: { chat_id: string; role: string; content: string; model?: string; images?: string[] }) =>
     post<Message>('/messages', data),
+  update: (id: string, data: { content?: string; images?: string[] }) =>
+    patch<Message>(`/messages/${id}`, data),
 };
 
 export const upload = {

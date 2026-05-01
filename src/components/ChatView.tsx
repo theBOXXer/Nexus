@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2 } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm, upload } from '../lib/api';
 import { marked } from 'marked';
 
@@ -91,6 +91,12 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     await navigator.clipboard.writeText(msg.content);
     setCopiedId(hoveredId);
     setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  async function deleteMessage(msgId: string) {
+    if (!confirm('Delete this message?')) return;
+    setMsgs((prev) => prev.map((m) => m.id === msgId ? { ...m, content: '[deleted]', images: '[]' } : m));
+    await messages.update(msgId, { content: '[deleted]', images: [] });
   }
 
   function startRename() {
@@ -346,7 +352,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
         <div className="max-w-3xl mx-auto space-y-6">
           {msgs.map((m) => (
-            <MessageBubble key={m.id} message={m} onHover={handleMsgEnter} onLeave={handleMsgLeave} />
+            <MessageBubble key={m.id} message={m} onHover={handleMsgEnter} onLeave={handleMsgLeave} onDelete={deleteMessage} />
           ))}
           {sending && (
             <div className="flex gap-3">
@@ -449,10 +455,34 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   );
 }
 
-function MessageBubble({ message, onHover, onLeave }: { message: Message; onHover: (id: string) => void; onLeave: () => void }) {
+function MessageBubble({ message, onHover, onLeave, onDelete }: { message: Message; onHover: (id: string) => void; onLeave: () => void; onDelete: (id: string) => void }) {
   const isUser = message.role === 'user';
+  const isDeleted = message.content === '[deleted]';
+  const [delHover, setDelHover] = useState(false);
   let images: string[] = [];
   try { images = JSON.parse(message.images || '[]'); } catch { /* ignore */ }
+
+  if (isDeleted) {
+    return (
+      <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isUser ? 'bg-slate-300 dark:bg-slate-700 opacity-30' : 'bg-gradient-to-br from-sky-500/30 to-emerald-500/30'}`}>
+          {isUser ? <User className="w-4 h-4 text-slate-400" /> : <Bot className="w-4 h-4 text-white/30" />}
+        </div>
+        <div className="min-w-0 max-w-[75%]">
+          <div className={`flex items-center gap-2 mb-1 ${isUser ? 'flex-row-reverse' : ''}`}>
+            <span className="text-sm font-semibold text-slate-500 dark:text-slate-500">{isUser ? 'You' : 'Assistant'}</span>
+            <span className="text-xs text-slate-400 dark:text-slate-600">
+              {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+          <div className={`text-[15px] leading-relaxed italic text-slate-400 dark:text-slate-500 bg-slate-100/50 dark:bg-slate-800/30 rounded-2xl ${isUser ? 'rounded-br-sm' : 'rounded-bl-sm'} px-4 py-3 flex items-center gap-2`}>
+            <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>This message was deleted</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -464,7 +494,7 @@ function MessageBubble({ message, onHover, onLeave }: { message: Message; onHove
         {isUser ? <User className="w-4 h-4 text-slate-700 dark:text-slate-200" /> : <Bot className="w-4 h-4 text-white" />}
       </div>
       <div
-        className={`min-w-0 max-w-[75%] ${isUser ? 'items-end' : ''}`}
+        className={`min-w-0 max-w-[75%] group relative ${isUser ? 'items-end' : ''}`}
         onMouseEnter={isUser ? undefined : () => onHover(message.id)}
         onMouseLeave={isUser ? undefined : onLeave}
       >
@@ -496,6 +526,15 @@ function MessageBubble({ message, onHover, onLeave }: { message: Message; onHove
             />
           </div>
         )}
+        <button
+          onMouseEnter={() => setDelHover(true)}
+          onMouseLeave={() => setDelHover(false)}
+          onClick={() => onDelete(message.id)}
+          className={`absolute top-1 -right-7 w-6 h-6 rounded flex items-center justify-center transition-all ${delHover ? 'opacity-100 bg-red-500/90 text-white' : 'opacity-0 group-hover:opacity-60 text-slate-400 hover:text-red-400'}`}
+          title="Delete message"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
       </div>
     </div>
   );
