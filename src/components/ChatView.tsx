@@ -642,7 +642,7 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit }: { messag
         {isUser ? <User className="w-4 h-4 text-slate-700 dark:text-slate-200" /> : <Bot className="w-4 h-4 text-white" />}
       </div>
       <div
-        className={`min-w-0 max-w-[75%] group relative ${isUser ? 'items-end' : ''} ${editing ? '!min-w-[600px]' : ''}`}
+        className={`min-w-0 max-w-[90%] md:max-w-[75%] group relative ${isUser ? 'items-end' : ''} ${editing ? '!min-w-[600px]' : ''}`}
         onMouseEnter={isUser ? undefined : () => onHover(message.id)}
         onMouseLeave={isUser ? undefined : onLeave}
       >
