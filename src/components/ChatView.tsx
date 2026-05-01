@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil } from 'lucide-react';
-import { Chat, Message, Category, MODELS, messages, chats, llm, upload } from '../lib/api';
+import { Chat, Message, Category, MODELS, messages, chats, llm, upload, generate } from '../lib/api';
 import { useMode } from '../contexts/ModeContext';
 import { marked, Renderer } from 'marked';
 
@@ -54,6 +54,9 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldScrollRef = useRef(false);
   const prevMsgCountRef = useRef(0);
+  const [genMode, setGenMode] = useState(false);
+  const [genPrompt, setGenPrompt] = useState('');
+  const [genLoading, setGenLoading] = useState(false);
 
   useEffect(() => {
     if (!chat) {
@@ -263,12 +266,54 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
         role: 'assistant',
         content: res.content,
         model: chat.model,
+        ...(res.images ? { images: res.images } : {}),
       });
       setMsgs((prev) => [...prev, aiMsg]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get response');
     } finally {
       setSending(false);
+    }
+  }
+
+  async function generateImageFn() {
+    if (!chat || !genPrompt.trim() || genLoading) return;
+    setGenLoading(true);
+    setError(null);
+    shouldScrollRef.current = true;
+    try {
+      const aiMsg = await generate.image(genPrompt.trim(), chat.id);
+      const promptText = genPrompt.trim();
+      setGenPrompt('');
+      setGenMode(false);
+
+      if (chat.title === 'New Chat') {
+        const title = promptText.length > 50 ? promptText.slice(0, 50) + '...' : promptText;
+        updateChatLocally(chat.id, { title });
+        chats.update(chat.id, { title }).catch(() => {});
+      }
+
+      setMsgs((prev) => {
+        const existing = prev.find((m) => m.id === aiMsg.id);
+        if (existing) return prev;
+        const userMsgId = crypto.randomUUID();
+        const userMsg: Message = {
+          id: userMsgId,
+          chat_id: chat.id,
+          user_id: '',
+          role: 'user',
+          content: promptText,
+          model: null,
+          images: '[]',
+          created_at: new Date().toISOString(),
+        };
+        return [...prev, userMsg, aiMsg];
+      });
+      onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Image generation failed');
+    } finally {
+      setGenLoading(false);
     }
   }
 
@@ -376,8 +421,12 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               <Bot className="w-3.5 h-3.5 text-emerald-400" />
               {mode === 'professional' ? `${currentModel?.provider} · ${currentModel?.label}` : mode === 'intermediate' ? currentModel?.simpleLabel : currentModel?.beginnerLabel}
             </div>
-            <h3 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">How can I help you today?</h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">Ask anything, or try switching models for different perspectives.</p>
+            <h3 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">
+              {chat.model === 'dall-e-3' ? 'Describe an image to create' : 'How can I help you today?'}
+            </h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
+              {chat.model === 'dall-e-3' ? 'Describe what you want DALL-E 3 to draw. Be specific about style, composition, and details.' : 'Ask anything, or try switching models for different perspectives.'}
+            </p>
           </div>
         )}
 
@@ -392,7 +441,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               </div>
               <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm pt-1.5">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Thinking...
+                {chat.model === 'dall-e-3' ? 'Generating image...' : 'Thinking...'}
               </div>
             </div>
           )}
@@ -419,7 +468,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
       <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40">
         <div className="max-w-3xl mx-auto">
-          {pendingImages.length > 0 && (
+          {pendingImages.length > 0 && chat.model !== 'dall-e-3' && (
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               {previewUrls.map((url, idx) => (
                 <div key={idx} className="relative group">
@@ -439,6 +488,36 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               )}
             </div>
           )}
+          {genMode && (
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="text"
+                autoFocus
+                value={genPrompt}
+                onChange={(e) => setGenPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); generateImageFn(); }
+                  if (e.key === 'Escape') { setGenMode(false); setGenPrompt(''); }
+                }}
+                placeholder="Describe an image to generate..."
+                className="flex-1 bg-slate-100 dark:bg-slate-900 border border-amber-500/50 text-slate-900 dark:text-white text-sm px-3 py-2 rounded-lg outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
+              />
+              <button
+                onClick={generateImageFn}
+                disabled={!genPrompt.trim() || genLoading}
+                className="px-3 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium disabled:opacity-40 hover:bg-amber-400 transition-colors flex items-center gap-1.5 flex-shrink-0"
+              >
+                {genLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                Generate
+              </button>
+              <button
+                onClick={() => { setGenMode(false); setGenPrompt(''); }}
+                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
           <div className="relative bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus-within:border-sky-500/50 focus-within:ring-2 focus-within:ring-sky-500/20 transition-all">
             <textarea
               value={input}
@@ -450,26 +529,37 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
                 }
               }}
               rows={1}
-              placeholder={pendingImages.length > 0 ? 'Add a caption or just send...' : `Message ${currentModel?.label}...`}
+              placeholder={pendingImages.length > 0 ? 'Add a caption or just send...' : chat.model === 'dall-e-3' ? 'Describe the image you want...' : `Message ${currentModel?.label}...`}
               className="w-full bg-transparent text-slate-900 dark:text-white placeholder-slate-500 px-4 py-3 pr-20 resize-none focus:outline-none max-h-40"
               style={{ minHeight: '48px' }}
             />
             <div className="absolute right-2 bottom-2 flex items-center gap-1">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                id="image-upload"
-                onChange={(e) => { if (e.target.files) { addImages(e.target.files); e.target.value = ''; } }}
-              />
-              <label
-                htmlFor="image-upload"
-                className="w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-sky-400 dark:hover:text-sky-400 flex items-center justify-center cursor-pointer hover:bg-slate-300/40 dark:hover:bg-slate-700/40 transition-colors"
-                title="Add images"
-              >
-                <ImagePlus className="w-4 h-4" />
-              </label>
+              {chat.model !== 'dall-e-3' && chat.model !== 'none' && (
+                <>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    id="image-upload"
+                    onChange={(e) => { if (e.target.files) { addImages(e.target.files); e.target.value = ''; } }}
+                  />
+                  <label
+                    htmlFor="image-upload"
+                    className="w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-sky-400 dark:hover:text-sky-400 flex items-center justify-center cursor-pointer hover:bg-slate-300/40 dark:hover:bg-slate-700/40 transition-colors"
+                    title="Add images"
+                  >
+                    <ImagePlus className="w-4 h-4" />
+                  </label>
+                  <button
+                    onClick={() => { setGenMode(!genMode); setGenPrompt(''); }}
+                    className="w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-amber-400 dark:hover:text-amber-400 flex items-center justify-center cursor-pointer hover:bg-slate-300/40 dark:hover:bg-slate-700/40 transition-colors"
+                    title="Generate image"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                  </button>
+                </>
+              )}
               <button
                 onClick={sendMessage}
                 disabled={(!input.trim() && pendingImages.length === 0) || sending}
@@ -600,6 +690,13 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit }: { messag
           </div>
         ) : (
           <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-200/60 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 rounded-2xl rounded-bl-sm px-4 py-3">
+            {images.length > 0 && (
+              <div className="flex flex-col gap-1.5 mb-2">
+                {images.map((url, i) => (
+                  <img key={i} src={url} alt="Generated" className="max-h-80 rounded-lg object-cover w-full" />
+                ))}
+              </div>
+            )}
             <div
               className="markdown-content"
               dangerouslySetInnerHTML={{ __html: marked.parse(linkify(message.content)) as string }}

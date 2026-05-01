@@ -323,6 +323,7 @@ const MODEL_MAP: Record<string, 'openai' | 'anthropic' | 'deepseek'> = {
   'claude-3-7-sonnet-20250219': 'anthropic', 'claude-3-opus-20240229': 'anthropic',
   'claude-3-5-haiku-20241022': 'anthropic',
   'deepseek-chat': 'deepseek', 'deepseek-reasoner': 'deepseek',
+  'dall-e-3': 'openai',
 };
 
 async function handleLLMChat(req: Request, env: Env): Promise<Response> {
@@ -333,6 +334,37 @@ async function handleLLMChat(req: Request, env: Env): Promise<Response> {
   if (!provider) return error(`Unsupported model: ${model}`);
 
   const hasImages = messages.some((m) => m.images && m.images.length > 0);
+
+  if (model === 'dall-e-3') {
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+    const prompt = lastUserMsg?.content || '';
+    if (!prompt) return error('No user message to use as prompt', 400);
+
+    const key = env.OPENAI_API_KEY;
+    if (!key) return error('OPENAI_API_KEY not configured', 500);
+
+    const imgRes = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model: 'dall-e-3', prompt, n: 1, size: '1024x1024' }),
+    });
+    if (!imgRes.ok) return error(`DALL-E: ${await imgRes.text()}`, 502);
+    const imgData = await imgRes.json() as { data: { url: string }[] };
+    const imageUrl = imgData.data[0].url;
+
+    let r2Url = imageUrl;
+    if (env.IMAGES) {
+      try {
+        const imgBlob = await fetch(imageUrl);
+        const buffer = await imgBlob.arrayBuffer();
+        const r2Key = `${crypto.randomUUID()}.png`;
+        await env.IMAGES.put(r2Key, buffer, { httpMetadata: { contentType: 'image/png' } });
+        r2Url = `https://pub-a5ed7db69cbb4f71a14a3706092b8c99.r2.dev/${r2Key}`;
+      } catch { /* use original URL if R2 upload fails */ }
+    }
+
+    return json({ content: '', images: [r2Url] });
+  }
 
   if (provider === 'openai') {
     const key = env.OPENAI_API_KEY;
@@ -408,6 +440,51 @@ async function handleLLMChat(req: Request, env: Env): Promise<Response> {
   if (!res.ok) return error(`Anthropic: ${await res.text()}`, 502);
   const data = await res.json() as { content: { text: string }[] };
   return json({ content: data.content[0].text });
+}
+
+// ─── Image Generation ──────────────────────────────────────────────────────
+
+async function handleGenerateImage(req: Request, env: Env, userId: string): Promise<Response> {
+  const { prompt, chat_id, size } = await req.json() as { prompt?: string; chat_id?: string; size?: string };
+  if (!prompt || !chat_id) return error('prompt and chat_id required');
+
+  const chat = await env.DB.prepare('SELECT id FROM chats WHERE id = ? AND user_id = ?').bind(chat_id, userId).first();
+  if (!chat) return error('Chat not found', 404);
+
+  const key = env.OPENAI_API_KEY;
+  if (!key) return error('OPENAI_API_KEY not configured', 500);
+
+  const imgRes = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ model: 'dall-e-3', prompt, n: 1, size: size || '1024x1024' }),
+  });
+  if (!imgRes.ok) return error(`DALL-E: ${await imgRes.text()}`, 502);
+  const imgData = await imgRes.json() as { data: { url: string }[] };
+  const imageUrl = imgData.data[0].url;
+
+  let r2Url = imageUrl;
+  if (env.IMAGES) {
+    try {
+      const imgBlob = await fetch(imageUrl);
+      const buffer = await imgBlob.arrayBuffer();
+      const r2Key = `${crypto.randomUUID()}.png`;
+      await env.IMAGES.put(r2Key, buffer, { httpMetadata: { contentType: 'image/png' } });
+      r2Url = `https://pub-a5ed7db69cbb4f71a14a3706092b8c99.r2.dev/${r2Key}`;
+    } catch { /* keep fallback */ }
+  }
+
+  const userMsgId = crypto.randomUUID();
+  await env.DB.prepare('INSERT INTO messages (id, chat_id, user_id, role, content, model) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(userMsgId, chat_id, userId, 'user', prompt, null).run();
+  await env.DB.prepare('UPDATE chats SET updated_at = ? WHERE id = ?').bind(new Date().toISOString(), chat_id).run();
+
+  const aiMsgId = crypto.randomUUID();
+  await env.DB.prepare('INSERT INTO messages (id, chat_id, user_id, role, content, model, images) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(aiMsgId, chat_id, userId, 'assistant', '', 'dall-e-3', JSON.stringify([r2Url])).run();
+
+  const aiMsg = await env.DB.prepare('SELECT * FROM messages WHERE id = ?').bind(aiMsgId).first();
+  return json(aiMsg, 201);
 }
 
 // ─── Router ──────────────────────────────────────────────────────────────────
@@ -527,6 +604,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // Image Upload
     if (path === '/upload' && request.method === 'POST') {
       const res = await handleUpload(request, env, userId);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+
+    // Image Generation
+    if (path === '/generate-image' && request.method === 'POST') {
+      const res = await handleGenerateImage(request, env, userId);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
     }

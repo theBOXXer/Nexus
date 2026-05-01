@@ -139,7 +139,12 @@ export const upload = {
 
 export const llm = {
   chat: (model: string, msgs: { role: string; content: string; images?: string[] }[]) =>
-    post<{ content: string }>('/llm-chat', { model, messages: msgs }),
+    post<{ content: string; images?: string[] }>('/llm-chat', { model, messages: msgs }),
+};
+
+export const generate = {
+  image: (prompt: string, chatId: string, size?: string) =>
+    post<Message>('/generate-image', { prompt, chat_id: chatId, size }),
 };
 
 export const MODELS = [
@@ -156,6 +161,7 @@ export const MODELS = [
   { id: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku', provider: 'Anthropic', simpleLabel: 'C-Hk $', beginnerLabel: 'Claude ★' },
   { id: 'deepseek-chat', label: 'DeepSeek V3', provider: 'DeepSeek', simpleLabel: 'D-V3 $', beginnerLabel: 'DeepSeek ★' },
   { id: 'deepseek-reasoner', label: 'DeepSeek R1', provider: 'DeepSeek', simpleLabel: 'D-R1 $$', beginnerLabel: 'DeepSeek ★★' },
+  { id: 'dall-e-3', label: 'DALL-E 3', provider: 'OpenAI', simpleLabel: 'O-D3 $$', beginnerLabel: 'DALL-E ★★' },
   { id: 'none', label: 'Notes (No AI)', provider: 'Local', simpleLabel: 'Notes', beginnerLabel: 'Notes' },
 ] as const;
 
