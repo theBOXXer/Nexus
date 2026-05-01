@@ -67,8 +67,11 @@ export default function ImageViewer({ src, alt, onClose }: Props) {
   }
 
   async function handleDownload() {
+    const token = localStorage.getItem('nexus_token');
+    const proxyUrl = `/api/download-image?src=${encodeURIComponent(src)}`;
     try {
-      const res = await fetch(src);
+      const res = await fetch(proxyUrl, token ? { headers: { Authorization: `Bearer ${token}` } } : {});
+      if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');

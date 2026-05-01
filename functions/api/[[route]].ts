@@ -533,6 +533,31 @@ async function handleGetShared(req: Request, env: Env): Promise<Response> {
   return json({ chat, messages: msgs.results });
 }
 
+// ─── Image Download (proxy to avoid CORS) ─────────────────────────────────
+
+async function handleImageDownload(req: Request, env: Env): Promise<Response> {
+  const url = new URL(req.url);
+  const src = url.searchParams.get('src');
+  if (!src) return error('src required');
+
+  try {
+    const res = await fetch(src);
+    if (!res.ok) return error('Failed to fetch image', 502);
+    const blob = await res.arrayBuffer();
+    const contentType = res.headers.get('Content-Type') || 'image/png';
+    return new Response(blob, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': 'attachment',
+        'Cache-Control': 'public, max-age=86400',
+      },
+    });
+  } catch {
+    return error('Download failed', 500);
+  }
+}
+
 // ─── Web Search ────────────────────────────────────────────────────────────
 
 async function handleWebSearch(req: Request, env: Env): Promise<Response> {
@@ -691,6 +716,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // Image Generation
     if (path === '/generate-image' && request.method === 'POST') {
       const res = await handleGenerateImage(request, env, userId);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+
+    // Image Download (proxy for cross-origin downloads)
+    if (path === '/download-image' && request.method === 'GET') {
+      const res = await handleImageDownload(request, env);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
     }
