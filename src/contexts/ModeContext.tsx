@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
-type Mode = 'professional' | 'beginner';
+type Mode = 'beginner' | 'intermediate' | 'professional';
 
 interface ModeContextValue {
   mode: Mode;
@@ -15,7 +15,8 @@ const ModeContext = createContext<ModeContextValue>({
 export function ModeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setModeState] = useState<Mode>(() => {
     const stored = localStorage.getItem('nexus_mode');
-    return stored === 'professional' ? 'professional' : 'beginner';
+    if (stored === 'professional' || stored === 'intermediate') return stored;
+    return 'beginner';
   });
 
   useEffect(() => {

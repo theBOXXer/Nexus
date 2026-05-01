@@ -363,7 +363,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
         >
           {MODELS.map((m) => (
             <option key={m.id} value={m.id}>
-              {mode === 'professional' ? `${m.provider} — ${m.label}` : m.simpleLabel}
+              {mode === 'professional' ? `${m.provider} — ${m.label}` : mode === 'intermediate' ? m.simpleLabel : m.beginnerLabel}
             </option>
           ))}
         </select>
@@ -374,7 +374,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
           <div className="max-w-2xl mx-auto mt-12 text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 mb-4">
               <Bot className="w-3.5 h-3.5 text-emerald-400" />
-              {mode === 'professional' ? `${currentModel?.provider} · ${currentModel?.label}` : currentModel?.simpleLabel}
+              {mode === 'professional' ? `${currentModel?.provider} · ${currentModel?.label}` : mode === 'intermediate' ? currentModel?.simpleLabel : currentModel?.beginnerLabel}
             </div>
             <h3 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">How can I help you today?</h3>
             <p className="text-slate-500 dark:text-slate-400 text-sm">Ask anything, or try switching models for different perspectives.</p>

@@ -1,4 +1,4 @@
-import { Archive, RotateCcw, Trash2, X, Zap, GraduationCap } from 'lucide-react';
+import { Archive, RotateCcw, Trash2, X, Zap, GraduationCap, Brain } from 'lucide-react';
 import { Chat, chats } from '../lib/api';
 import { useMode } from '../contexts/ModeContext';
 
@@ -40,12 +40,12 @@ export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-sky-400" />
+              <Brain className="w-5 h-5 text-sky-400" />
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Display Mode</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Beginner shows simplified model labels. Professional shows full names.
+                Beginner shows brand + stars. Intermediate shows short codes. Professional shows full names.
               </p>
             </div>
           </div>
@@ -58,8 +58,19 @@ export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
                   : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'
               }`}
             >
-              <GraduationCap className="w-4 h-4" />
+              <Brain className="w-4 h-4" />
               Beginner
+            </button>
+            <button
+              onClick={() => setMode('intermediate')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                mode === 'intermediate'
+                  ? 'bg-sky-500 text-white shadow-sm'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" />
+              Intermediate
             </button>
             <button
               onClick={() => setMode('professional')}
