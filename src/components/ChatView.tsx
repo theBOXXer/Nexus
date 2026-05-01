@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2 } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm, upload } from '../lib/api';
 import { marked, Renderer } from 'marked';
 
@@ -121,6 +121,11 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     if (!confirm('Delete this message?')) return;
     setMsgs((prev) => prev.map((m) => m.id === msgId ? { ...m, content: '[deleted]', images: '[]' } : m));
     await messages.update(msgId, { content: '[deleted]', images: [] });
+  }
+
+  async function editMessage(msgId: string, content: string) {
+    setMsgs((prev) => prev.map((m) => m.id === msgId ? { ...m, content } : m));
+    await messages.update(msgId, { content });
   }
 
   function startRename() {
@@ -376,7 +381,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
         <div className="max-w-3xl mx-auto space-y-6">
           {msgs.map((m) => (
-            <MessageBubble key={m.id} message={m} onHover={handleMsgEnter} onLeave={handleMsgLeave} onDelete={deleteMessage} />
+            <MessageBubble key={m.id} message={m} onHover={handleMsgEnter} onLeave={handleMsgLeave} onDelete={deleteMessage} onEdit={editMessage} />
           ))}
           {sending && (
             <div className="flex gap-3">
@@ -479,10 +484,12 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   );
 }
 
-function MessageBubble({ message, onHover, onLeave, onDelete }: { message: Message; onHover: (id: string) => void; onLeave: () => void; onDelete: (id: string) => void }) {
+function MessageBubble({ message, onHover, onLeave, onDelete, onEdit }: { message: Message; onHover: (id: string) => void; onLeave: () => void; onDelete: (id: string) => void; onEdit: (id: string, content: string) => void }) {
   const isUser = message.role === 'user';
   const isDeleted = message.content === '[deleted]';
   const [delHover, setDelHover] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState('');
   let images: string[] = [];
   try { images = JSON.parse(message.images || '[]'); } catch { /* ignore */ }
 
@@ -508,6 +515,22 @@ function MessageBubble({ message, onHover, onLeave, onDelete }: { message: Messa
     );
   }
 
+  function startEdit() {
+    setEditDraft(message.content);
+    setEditing(true);
+  }
+
+  function commitEdit() {
+    if (editDraft.trim() && editDraft.trim() !== message.content) {
+      onEdit(message.id, editDraft.trim());
+    }
+    setEditing(false);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+  }
+
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
@@ -531,7 +554,26 @@ function MessageBubble({ message, onHover, onLeave, onDelete }: { message: Messa
             {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
-        {isUser ? (
+        {editing ? (
+          <div className={`rounded-2xl ${isUser ? 'rounded-br-sm' : 'rounded-bl-sm'} px-4 py-3 ${isUser ? 'bg-slate-300/60 dark:bg-slate-700/60' : 'bg-slate-200/60 dark:bg-slate-800/60'}`}>
+            <textarea
+              autoFocus
+              value={editDraft}
+              onChange={(e) => setEditDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(); } if (e.key === 'Escape') cancelEdit(); }}
+              className="w-full bg-transparent text-slate-900 dark:text-white text-[15px] leading-relaxed resize-none focus:outline-none min-h-[48px]"
+              rows={3}
+            />
+            <div className="flex items-center gap-2 mt-2 justify-end">
+              <button onClick={cancelEdit} className="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" title="Cancel">
+                <X className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={commitEdit} className="w-7 h-7 rounded flex items-center justify-center text-sky-500 hover:text-sky-400 hover:bg-sky-500/10 transition-colors" title="Save">
+                <Check className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ) : isUser ? (
           <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-300/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 rounded-2xl rounded-br-sm px-4 py-3">
             {images.length > 0 && (
               <div className="flex flex-col gap-1.5 mb-2">
@@ -553,15 +595,26 @@ function MessageBubble({ message, onHover, onLeave, onDelete }: { message: Messa
             />
           </div>
         )}
-        <button
-          onMouseEnter={() => setDelHover(true)}
-          onMouseLeave={() => setDelHover(false)}
-          onClick={() => onDelete(message.id)}
-          className={`absolute -bottom-1 -right-7 w-6 h-6 rounded flex items-center justify-center transition-all ${delHover ? 'opacity-100 bg-red-500/90 text-white' : 'opacity-0 group-hover:opacity-60 text-slate-400 hover:text-red-400'}`}
-          title="Delete message"
-        >
-          <Trash2 className="w-3 h-3" />
-        </button>
+        {!editing && (
+          <div className="absolute -bottom-1 -right-14 flex gap-1 opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity">
+            <button
+              onClick={startEdit}
+              className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-sky-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              title="Edit message"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+            <button
+              onMouseEnter={() => setDelHover(true)}
+              onMouseLeave={() => setDelHover(false)}
+              onClick={() => onDelete(message.id)}
+              className={`w-6 h-6 rounded flex items-center justify-center transition-all ${delHover ? 'bg-red-500/90 text-white' : 'text-slate-400 hover:text-red-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+              title="Delete message"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
