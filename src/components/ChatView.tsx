@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm, upload } from '../lib/api';
+import { useMode } from '../contexts/ModeContext';
 import { marked, Renderer } from 'marked';
 
 marked.use({
@@ -39,6 +40,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { mode } = useMode();
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [editingDate, setEditingDate] = useState(false);
@@ -361,7 +363,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
         >
           {MODELS.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.provider} — {m.label}
+              {mode === 'professional' ? `${m.provider} — ${m.label}` : m.simpleLabel}
             </option>
           ))}
         </select>
@@ -372,7 +374,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
           <div className="max-w-2xl mx-auto mt-12 text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 mb-4">
               <Bot className="w-3.5 h-3.5 text-emerald-400" />
-              {currentModel?.provider} · {currentModel?.label}
+              {mode === 'professional' ? `${currentModel?.provider} · ${currentModel?.label}` : currentModel?.simpleLabel}
             </div>
             <h3 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">How can I help you today?</h3>
             <p className="text-slate-500 dark:text-slate-400 text-sm">Ask anything, or try switching models for different perspectives.</p>

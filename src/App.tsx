@@ -3,6 +3,7 @@ import { MessageSquare, Calendar, FolderTree, Settings as SettingsIcon, Sun, Moo
 import { auth, clearToken, setToken, chats } from './lib/api';
 import { useChatData } from './hooks/useChatData';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { ModeProvider } from './contexts/ModeContext';
 import Auth from './components/Auth';
 import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
@@ -131,6 +132,7 @@ function App() {
 
   return (
     <ThemeProvider>
+    <ModeProvider>
     <div className="h-dvh flex flex-col bg-white dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden">
       <div className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 backdrop-blur flex items-center px-4 flex-shrink-0">
         <button
@@ -219,6 +221,7 @@ function App() {
         </div>
       </div>
     </div>
+    </ModeProvider>
     </ThemeProvider>
   );
 }

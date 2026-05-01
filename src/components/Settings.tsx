@@ -1,5 +1,6 @@
-import { Archive, RotateCcw, Trash2, X } from 'lucide-react';
+import { Archive, RotateCcw, Trash2, X, Zap, GraduationCap } from 'lucide-react';
 import { Chat, chats } from '../lib/api';
+import { useMode } from '../contexts/ModeContext';
 
 interface Props {
   archivedChats: Chat[];
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
+  const { mode, setMode } = useMode();
+
   async function restore(id: string) {
     await chats.update(id, { archived: false });
     onRefresh();
@@ -35,6 +38,42 @@ export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl mx-auto">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-sky-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Display Mode</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Beginner shows simplified model labels. Professional shows full names.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 mb-8">
+            <button
+              onClick={() => setMode('beginner')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                mode === 'beginner'
+                  ? 'bg-sky-500 text-white shadow-sm'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" />
+              Beginner
+            </button>
+            <button
+              onClick={() => setMode('professional')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                mode === 'professional'
+                  ? 'bg-sky-500 text-white shadow-sm'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'
+              }`}
+            >
+              <Zap className="w-4 h-4" />
+              Professional
+            </button>
+          </div>
+
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
               <Archive className="w-5 h-5 text-amber-400" />

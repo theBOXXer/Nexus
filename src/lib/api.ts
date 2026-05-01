@@ -143,20 +143,20 @@ export const llm = {
 };
 
 export const MODELS = [
-  { id: 'gpt-4o', label: 'GPT-4o', provider: 'OpenAI' },
-  { id: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'OpenAI' },
-  { id: 'gpt-4-turbo', label: 'GPT-4 Turbo', provider: 'OpenAI' },
-  { id: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', provider: 'OpenAI' },
-  { id: 'claude-opus-4-7', label: 'Claude Opus 4.7', provider: 'Anthropic' },
-  { id: 'claude-opus-4-6', label: 'Claude Opus 4.6', provider: 'Anthropic' },
-  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', provider: 'Anthropic' },
-  { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5', provider: 'Anthropic' },
-  { id: 'claude-3-7-sonnet-20250219', label: 'Claude Sonnet 3.7', provider: 'Anthropic' },
-  { id: 'claude-3-opus-20240229', label: 'Claude Opus 3', provider: 'Anthropic' },
-  { id: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku', provider: 'Anthropic' },
-  { id: 'deepseek-chat', label: 'DeepSeek V3', provider: 'DeepSeek' },
-  { id: 'deepseek-reasoner', label: 'DeepSeek R1', provider: 'DeepSeek' },
-  { id: 'none', label: 'Notes (No AI)', provider: 'Local' },
+  { id: 'gpt-4o', label: 'GPT-4o', provider: 'OpenAI', simpleLabel: 'O-4o $$$' },
+  { id: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'OpenAI', simpleLabel: 'O-Mini $' },
+  { id: 'gpt-4-turbo', label: 'GPT-4 Turbo', provider: 'OpenAI', simpleLabel: 'O-4T $$$' },
+  { id: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', provider: 'OpenAI', simpleLabel: 'O-3.5 $' },
+  { id: 'claude-opus-4-7', label: 'Claude Opus 4.7', provider: 'Anthropic', simpleLabel: 'C-Op4.7 $$$' },
+  { id: 'claude-opus-4-6', label: 'Claude Opus 4.6', provider: 'Anthropic', simpleLabel: 'C-Op4.6 $$$' },
+  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', provider: 'Anthropic', simpleLabel: 'C-So4.6 $$' },
+  { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5', provider: 'Anthropic', simpleLabel: 'C-So4.5 $$' },
+  { id: 'claude-3-7-sonnet-20250219', label: 'Claude Sonnet 3.7', provider: 'Anthropic', simpleLabel: 'C-So3.7 $$' },
+  { id: 'claude-3-opus-20240229', label: 'Claude Opus 3', provider: 'Anthropic', simpleLabel: 'C-Op3 $$$' },
+  { id: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku', provider: 'Anthropic', simpleLabel: 'C-Hk $' },
+  { id: 'deepseek-chat', label: 'DeepSeek V3', provider: 'DeepSeek', simpleLabel: 'D-V3 $' },
+  { id: 'deepseek-reasoner', label: 'DeepSeek R1', provider: 'DeepSeek', simpleLabel: 'D-R1 $$' },
+  { id: 'none', label: 'Notes (No AI)', provider: 'Local', simpleLabel: 'Notes' },
 ] as const;
 
 export const CATEGORY_COLORS = [
