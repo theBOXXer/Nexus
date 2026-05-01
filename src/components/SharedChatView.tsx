@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bot, User, Hash, Sparkles } from 'lucide-react';
 import { share, Message } from '../lib/api';
 import { marked, Renderer } from 'marked';
+import ImageViewer from './ImageViewer';
 
 marked.use({
   gfm: true,
@@ -30,6 +31,7 @@ export default function SharedChatView({ token }: { token: string }) {
   const [msgs, setMsgs] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewerImg, setViewerImg] = useState<{ src: string; alt: string } | null>(null);
 
   useEffect(() => {
     share.get(token)
@@ -126,7 +128,7 @@ export default function SharedChatView({ token }: { token: string }) {
                     {images.length > 0 && (
                       <div className="flex flex-col gap-1.5 mb-2">
                         {images.map((url, i) => (
-                          <img key={i} src={url} alt="Generated" className="max-h-80 rounded-lg object-cover w-full" />
+                          <img key={i} src={url} alt="Generated" className="max-h-80 rounded-lg object-cover w-full cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setViewerImg({ src: url, alt: 'Shared image' })} />
                         ))}
                       </div>
                     )}
@@ -147,6 +149,10 @@ export default function SharedChatView({ token }: { token: string }) {
           This is a read-only shared conversation from Nexus
         </p>
       </div>
+
+      {viewerImg && (
+        <ImageViewer src={viewerImg.src} alt={viewerImg.alt} onClose={() => setViewerImg(null)} />
+      )}
     </div>
   );
 }

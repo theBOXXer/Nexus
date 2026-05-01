@@ -4,6 +4,7 @@ import { Chat, Message, Category, MODELS, messages, chats, llm, upload, generate
 import { useMode } from '../contexts/ModeContext';
 import { marked, Renderer } from 'marked';
 import { extractFromFile, getSupportedTypes, getDocPreviewText, ExtractionResult } from '../lib/fileExtraction';
+import ImageViewer from './ImageViewer';
 
 marked.use({
   gfm: true,
@@ -68,6 +69,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<string | null>(null);
+  const [viewerImg, setViewerImg] = useState<{ src: string; alt: string } | null>(null);
 
   useEffect(() => {
   async function handleSearch() {
@@ -526,7 +528,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
         <div className="max-w-3xl mx-auto space-y-6">
           {msgs.map((m) => (
-            <MessageBubble key={m.id} message={m} onHover={handleMsgEnter} onLeave={handleMsgLeave} onDelete={deleteMessage} onEdit={editMessage} />
+            <MessageBubble key={m.id} message={m} onHover={handleMsgEnter} onLeave={handleMsgLeave} onDelete={deleteMessage} onEdit={editMessage} onViewImage={(src, alt) => setViewerImg({ src, alt })} />
           ))}
           {sending && (
             <div className="flex gap-3">
@@ -771,11 +773,15 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
           <p className="text-xs text-slate-400 dark:text-slate-600 mt-2 text-center">Shift + Enter for newline · Enter to send · Paste or drag images</p>
         </div>
       </div>
+
+      {viewerImg && (
+        <ImageViewer src={viewerImg.src} alt={viewerImg.alt} onClose={() => setViewerImg(null)} />
+      )}
     </div>
   );
 }
 
-function MessageBubble({ message, onHover, onLeave, onDelete, onEdit }: { message: Message; onHover: (id: string) => void; onLeave: () => void; onDelete: (id: string) => void; onEdit: (id: string, content: string) => void }) {
+function MessageBubble({ message, onHover, onLeave, onDelete, onEdit, onViewImage }: { message: Message; onHover: (id: string) => void; onLeave: () => void; onDelete: (id: string) => void; onEdit: (id: string, content: string) => void; onViewImage: (src: string, alt: string) => void }) {
   const isUser = message.role === 'user';
   const isDeleted = message.content === '[deleted]';
   const [delHover, setDelHover] = useState(false);
@@ -878,7 +884,7 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit }: { messag
             {images.length > 0 && (
               <div className="flex flex-col gap-1.5 mb-2">
                 {images.map((url, i) => (
-                  <img key={i} src={url} alt="Attached" className="max-h-60 rounded-lg object-cover" />
+                  <img key={i} src={url} alt="Attached" className="max-h-60 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => onViewImage(url, 'Attached image')} />
                 ))}
               </div>
             )}
@@ -892,7 +898,7 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit }: { messag
             {images.length > 0 && (
               <div className="flex flex-col gap-1.5 mb-2">
                 {images.map((url, i) => (
-                  <img key={i} src={url} alt="Generated" className="max-h-80 rounded-lg object-cover w-full" />
+                  <img key={i} src={url} alt="Generated" className="max-h-80 rounded-lg object-cover w-full cursor-pointer hover:opacity-90 transition-opacity" onClick={() => onViewImage(url, 'AI generated image')} />
                 ))}
               </div>
             )}
