@@ -491,6 +491,14 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit }: { messag
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+      textareaRef.current.focus();
+    }
+  }, [editing]);
   let images: string[] = [];
   try { images = JSON.parse(message.images || '[]'); } catch { /* ignore */ }
 
@@ -564,7 +572,6 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit }: { messag
               onChange={(e) => { setEditDraft(e.target.value); if (textareaRef.current) { textareaRef.current.style.height = 'auto'; textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'; } }}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(); } if (e.key === 'Escape') cancelEdit(); }}
               className="w-full bg-transparent text-slate-900 dark:text-white text-[15px] leading-relaxed resize-none focus:outline-none overflow-hidden"
-              rows={1}
             />
             <div className="flex items-center gap-2 mt-2 justify-end">
               <button onClick={cancelEdit} className="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" title="Cancel">
