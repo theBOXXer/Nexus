@@ -557,7 +557,7 @@ function MessageBubble({ message, onHover, onLeave, onDelete }: { message: Messa
           onMouseEnter={() => setDelHover(true)}
           onMouseLeave={() => setDelHover(false)}
           onClick={() => onDelete(message.id)}
-          className={`absolute top-1 -right-7 w-6 h-6 rounded flex items-center justify-center transition-all ${delHover ? 'opacity-100 bg-red-500/90 text-white' : 'opacity-0 group-hover:opacity-60 text-slate-400 hover:text-red-400'}`}
+          className={`absolute -bottom-1 -right-7 w-6 h-6 rounded flex items-center justify-center transition-all ${delHover ? 'opacity-100 bg-red-500/90 text-white' : 'opacity-0 group-hover:opacity-60 text-slate-400 hover:text-red-400'}`}
           title="Delete message"
         >
           <Trash2 className="w-3 h-3" />
