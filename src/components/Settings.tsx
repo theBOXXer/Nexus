@@ -1,5 +1,6 @@
-import { Archive, RotateCcw, Trash2, X, Zap, GraduationCap, Brain } from 'lucide-react';
-import { Chat, chats } from '../lib/api';
+import { useState, useEffect } from 'react';
+import { Archive, RotateCcw, Trash2, X, Zap, GraduationCap, Brain, Share2, Copy, Check } from 'lucide-react';
+import { Chat, chats, share, SharedLink } from '../lib/api';
 import { useMode } from '../contexts/ModeContext';
 
 interface Props {
@@ -10,10 +11,27 @@ interface Props {
 
 export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
   const { mode, setMode } = useMode();
+  const [sharedLinks, setSharedLinks] = useState<SharedLink[]>([]);
+  const [copyId, setCopyId] = useState<string | null>(null);
 
   async function restore(id: string) {
     await chats.update(id, { archived: false });
     onRefresh();
+  }
+
+  useEffect(() => {
+    share.list().then(setSharedLinks).catch(() => {});
+  }, []);
+
+  async function revokeShare(id: string) {
+    await share.revoke(id);
+    setSharedLinks((prev) => prev.filter((l) => l.id !== id));
+  }
+
+  async function copyShareLink(token: string, id: string) {
+    await navigator.clipboard.writeText(`${window.location.origin}/?share=${token}`);
+    setCopyId(id);
+    setTimeout(() => setCopyId(null), 2000);
   }
 
   async function deleteForever(id: string) {
@@ -149,6 +167,51 @@ export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
             </div>
           )}
         </div>
+
+        <div className="flex items-center gap-3 mb-6 mt-8">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+            <Share2 className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Shared Links</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Manage links you&apos;ve shared. Anyone with the link can view the conversation.
+            </p>
+          </div>
+        </div>
+
+        {sharedLinks.length === 0 ? (
+          <p className="text-sm text-slate-400 dark:text-slate-600 text-center py-4 mb-8">No shared links yet. Share a chat to create one.</p>
+        ) : (
+          <div className="space-y-2 mb-8">
+            {sharedLinks.map((link) => (
+              <div key={link.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{link.chat_title}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-600">
+                    {new Date(link.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => copyShareLink(link.token, link.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    {copyId === link.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copyId === link.id ? 'Copied' : 'Copy'}
+                  </button>
+                  <button
+                    onClick={() => revokeShare(link.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Revoke
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import ChatView from './components/ChatView';
 import CalendarView from './components/CalendarView';
 import FolderView from './components/FolderView';
 import Settings from './components/Settings';
+import SharedChatView from './components/SharedChatView';
 
 type Tab = 'chat' | 'calendar' | 'folders';
 
@@ -21,6 +22,8 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  const shareToken = new URLSearchParams(window.location.search).get('share');
 
   useEffect(() => {
     function onResize() { setIsMobile(window.innerWidth < 768); }
@@ -122,7 +125,10 @@ function App() {
     );
   }
 
-  if (!session) return <Auth onAuth={handleAuth} />;
+  if (!session) {
+    if (shareToken) return <ThemeProvider><ModeProvider><SharedChatView token={shareToken} /></ModeProvider></ThemeProvider>;
+    return <Auth onAuth={handleAuth} />;
+  }
 
   const tabs: { id: Tab; label: string; icon: typeof MessageSquare }[] = [
     { id: 'chat', label: 'Chats', icon: MessageSquare },

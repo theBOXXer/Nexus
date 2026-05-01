@@ -5,6 +5,8 @@ interface Env {
   ANTHROPIC_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
   IMAGES?: { put(key: string, value: ArrayBuffer | ReadableStream, options?: { httpMetadata?: { contentType?: string } }): Promise<{ key: string } | null>; get(key: string): Promise<{ body: ReadableStream } | null> };
+  GOOGLE_API_KEY?: string;
+  GOOGLE_CX?: string;
 }
 
 interface JWTPayload {
@@ -487,6 +489,77 @@ async function handleGenerateImage(req: Request, env: Env, userId: string): Prom
   return json(aiMsg, 201);
 }
 
+// ─── Chat Sharing ──────────────────────────────────────────────────────────
+
+async function handleCreateShare(req: Request, env: Env, userId: string): Promise<Response> {
+  const { chat_id } = await req.json() as { chat_id?: string };
+  if (!chat_id) return error('chat_id required');
+
+  const chat = await env.DB.prepare('SELECT id FROM chats WHERE id = ? AND user_id = ?').bind(chat_id, userId).first();
+  if (!chat) return error('Chat not found', 404);
+
+  const id = crypto.randomUUID();
+  const token = crypto.randomUUID();
+  await env.DB.prepare('INSERT INTO shared_chats (id, chat_id, user_id, token) VALUES (?, ?, ?, ?)')
+    .bind(id, chat_id, userId, token).run();
+  return json({ id, token, url: `/?share=${token}` }, 201);
+}
+
+async function handleListShares(_req: Request, env: Env, userId: string): Promise<Response> {
+  const rows = await env.DB.prepare(
+    'SELECT s.*, c.title as chat_title FROM shared_chats s JOIN chats c ON s.chat_id = c.id WHERE s.user_id = ? ORDER BY s.created_at DESC'
+  ).bind(userId).all();
+  return json(rows.results);
+}
+
+async function handleRevokeShare(_req: Request, env: Env, userId: string, shareId: string): Promise<Response> {
+  const result = await env.DB.prepare('DELETE FROM shared_chats WHERE id = ? AND user_id = ?').bind(shareId, userId).run();
+  if (result.changes === 0) return error('Not found', 404);
+  return json({ success: true });
+}
+
+async function handleGetShared(req: Request, env: Env): Promise<Response> {
+  const url = new URL(req.url);
+  const token = url.searchParams.get('token');
+  if (!token) return error('token required');
+
+  const share = await env.DB.prepare('SELECT * FROM shared_chats WHERE token = ?').bind(token).first<{ chat_id: string }>();
+  if (!share) return error('Shared chat not found', 404);
+
+  const chat = await env.DB.prepare('SELECT id, title, model, created_at FROM chats WHERE id = ?').bind(share.chat_id).first<{ id: string; title: string; model: string; created_at: string }>();
+  if (!chat) return error('Chat not found', 404);
+
+  const msgs = await env.DB.prepare('SELECT * FROM messages WHERE chat_id = ? ORDER BY created_at ASC').bind(share.chat_id).all();
+  return json({ chat, messages: msgs.results });
+}
+
+// ─── Web Search ────────────────────────────────────────────────────────────
+
+async function handleWebSearch(req: Request, env: Env): Promise<Response> {
+  const { query } = await req.json() as { query?: string };
+  if (!query) return error('query required');
+
+  const apiKey = env.GOOGLE_API_KEY;
+  const cx = env.GOOGLE_CX;
+  if (!apiKey || !cx) return error('Google search not configured', 500);
+
+  const res = await fetch(
+    `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(apiKey)}&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(query)}&num=5`
+  );
+  if (!res.ok) return error(`Google Search: ${await res.text()}`, 502);
+  const data = await res.json() as { items?: { title: string; link: string; snippet: string }[] };
+
+  if (!data.items || data.items.length === 0) {
+    return json({ results: 'No search results found.' });
+  }
+
+  const results = data.items
+    .map((item, i) => `${i + 1}. **${item.title}**\n   ${item.snippet}\n   ${item.link}`)
+    .join('\n\n');
+
+  return json({ results });
+}
+
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export const onRequest: PagesFunction<Env> = async (context) => {
@@ -508,6 +581,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
     if (path === '/auth/signin' && request.method === 'POST') {
       const res = await handleAuthSignin(request, env);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+
+    // Shared chat (public — no auth required)
+    if (path === '/shared' && request.method === 'GET') {
+      const res = await handleGetShared(request, env);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
     }
@@ -611,6 +691,34 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // Image Generation
     if (path === '/generate-image' && request.method === 'POST') {
       const res = await handleGenerateImage(request, env, userId);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+
+    // Chat Sharing
+    if (path === '/share' && request.method === 'POST') {
+      const res = await handleCreateShare(request, env, userId);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+    if (path === '/shares' && request.method === 'GET') {
+      const res = await handleListShares(request, env, userId);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+    const shareMatch = path.match(/^\/share\/(.+)$/);
+    if (shareMatch) {
+      const shareId = shareMatch[1];
+      if (request.method === 'DELETE') {
+        const res = await handleRevokeShare(request, env, userId, shareId);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
+    // Web Search
+    if (path === '/web-search' && request.method === 'POST') {
+      const res = await handleWebSearch(request, env);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
     }

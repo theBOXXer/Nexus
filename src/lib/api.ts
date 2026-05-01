@@ -73,6 +73,15 @@ export type Chat = {
   updated_at: string;
 };
 
+export type SharedLink = {
+  id: string;
+  chat_id: string;
+  user_id: string;
+  token: string;
+  created_at: string;
+  chat_title: string;
+};
+
 export type Message = {
   id: string;
   chat_id: string;
@@ -145,6 +154,20 @@ export const llm = {
 export const generate = {
   image: (prompt: string, chatId: string, size?: string) =>
     post<Message>('/generate-image', { prompt, chat_id: chatId, size }),
+};
+
+export const share = {
+  create: (chatId: string) =>
+    post<{ id: string; token: string; url: string }>('/share', { chat_id: chatId }),
+  list: () => get<SharedLink[]>('/shares'),
+  revoke: (id: string) => del<{ success: boolean }>(`/share/${id}`),
+  get: (token: string) =>
+    get<{ chat: { id: string; title: string; model: string; created_at: string }; messages: Message[] }>(`/shared?token=${encodeURIComponent(token)}`),
+};
+
+export const webSearch = {
+  search: (query: string) =>
+    post<{ results: string }>('/web-search', { query }),
 };
 
 export const MODELS = [

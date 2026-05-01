@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil } from 'lucide-react';
-import { Chat, Message, Category, MODELS, messages, chats, llm, upload, generate } from '../lib/api';
+import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil, Share2, FileText, Globe } from 'lucide-react';
+import { Chat, Message, Category, MODELS, messages, chats, llm, upload, generate, share, webSearch } from '../lib/api';
 import { useMode } from '../contexts/ModeContext';
 import { marked, Renderer } from 'marked';
+import { extractFromFile, getSupportedTypes, getDocPreviewText, ExtractionResult } from '../lib/fileExtraction';
 
 marked.use({
   gfm: true,
@@ -57,9 +58,33 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [genMode, setGenMode] = useState(false);
   const [genPrompt, setGenPrompt] = useState('');
   const [genLoading, setGenLoading] = useState(false);
+  const [shareModal, setShareModal] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [pendingDocs, setPendingDocs] = useState<{ file: File; result?: ExtractionResult }[]>([]);
+  const [extractingDoc, setExtractingDoc] = useState(false);
+  const [searchMode, setSearchMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!chat) {
+  async function handleSearch() {
+    if (!searchQuery.trim() || searchLoading) return;
+    setSearchLoading(true);
+    setError(null);
+    try {
+      const res = await webSearch.search(searchQuery.trim());
+      setSearchResults(res.results);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Search failed');
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
+  if (!chat) {
       setMsgs([]);
       return;
     }
@@ -94,6 +119,30 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     if (!chat) return;
     updateChatLocally(chat.id, { model });
     await chats.update(chat.id, { model });
+  }
+
+  async function handleShare() {
+    if (!chat) return;
+    setShareLoading(true);
+    setShareModal(true);
+    setShareUrl(null);
+    setShareCopied(false);
+    try {
+      const res = await share.create(chat.id);
+      setShareUrl(`${window.location.origin}${res.url}`);
+    } catch (err) {
+      setShareUrl(null);
+      setError(err instanceof Error ? err.message : 'Failed to create share link');
+    } finally {
+      setShareLoading(false);
+    }
+  }
+
+  async function copyShareUrl() {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
   }
 
   function handleMsgEnter(id: string) {
@@ -178,11 +227,30 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   }
 
   function addImages(files: FileList | File[]) {
-    const arr = Array.from(files).filter((f) => f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024);
+    const arr = Array.from(files);
     if (arr.length === 0) return;
-    const combined = [...pendingImages, ...arr].slice(0, 4);
-    setPendingImages(combined);
-    setPreviewUrls(combined.map((f) => URL.createObjectURL(f)));
+
+    const imgFiles = arr.filter((f) => f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024);
+    const docFiles = arr.filter((f) => !f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024);
+
+    if (imgFiles.length > 0) {
+      const combined = [...pendingImages, ...imgFiles].slice(0, 4);
+      setPendingImages(combined);
+      setPreviewUrls(combined.map((f) => URL.createObjectURL(f)));
+    }
+
+    if (docFiles.length > 0) {
+      const combined = [...pendingDocs, ...docFiles.map((f) => ({ file: f }))].slice(0, 4);
+      setPendingDocs(combined);
+      setExtractingDoc(true);
+      Promise.all(combined.map(async (d, i) => {
+        if (d.result) return;
+        try {
+          const result = await extractFromFile(d.file);
+          setPendingDocs((prev) => prev.map((p, j) => j === i ? { ...p, result } : p));
+        } catch { /* extraction failed, will show error */ }
+      })).finally(() => setExtractingDoc(false));
+    }
   }
 
   function removeImage(idx: number) {
@@ -193,13 +261,17 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     });
   }
 
+  function removeDoc(idx: number) {
+    setPendingDocs((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   function handlePaste(e: React.ClipboardEvent) {
     const items = e.clipboardData?.items;
     if (!items) return;
     const files: File[] = [];
     for (let i = 0; i < items.length; i++) {
       const blob = items[i].getAsFile();
-      if (blob && blob.type.startsWith('image/')) files.push(blob);
+      if (blob) files.push(blob);
     }
     if (files.length > 0) {
       e.preventDefault();
@@ -219,12 +291,27 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   }
 
   async function sendMessage() {
-    if (!chat || (!input.trim() && pendingImages.length === 0) || sending) return;
-    const content = input.trim();
+    if (!chat || (!input.trim() && pendingImages.length === 0 && pendingDocs.length === 0) || sending) return;
+    let content = input.trim();
     setInput('');
     setSending(true);
     setError(null);
     shouldScrollRef.current = true;
+
+    if (searchResults) {
+      content = `Search results for: "${searchQuery}"\n\n${searchResults}\n\n---\n\nUser message: ${content}`;
+      setSearchResults(null);
+      setSearchQuery('');
+      setSearchMode(false);
+    }
+
+    let extraText = '';
+    for (const doc of pendingDocs) {
+      if (doc.result) {
+        extraText += `\n\n[File: ${doc.file.name}]\n${doc.result.text}`;
+      }
+    }
+    setPendingDocs([]);
 
     let imageUrls: string[] = [];
     if (pendingImages.length > 0) {
@@ -241,7 +328,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     }
 
     try {
-      const userMsg = await messages.create({ chat_id: chat.id, role: 'user', content, images: imageUrls.length > 0 ? imageUrls : undefined });
+      const userMsg = await messages.create({ chat_id: chat.id, role: 'user', content: content + extraText, images: imageUrls.length > 0 ? imageUrls : undefined });
       setMsgs((prev) => [...prev, userMsg]);
 
       if (msgs.length === 0 && content && chat.title === 'New Chat') {
@@ -412,6 +499,13 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
             </option>
           ))}
         </select>
+        <button
+          onClick={handleShare}
+          className="w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-sky-400 dark:hover:text-sky-400 flex items-center justify-center hover:bg-slate-300/40 dark:hover:bg-slate-700/40 transition-colors"
+          title="Share chat"
+        >
+          <Share2 className="w-4 h-4" />
+        </button>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
@@ -442,8 +536,47 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm pt-1.5">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 {chat.model === 'dall-e-3' ? 'Generating image...' : 'Thinking...'}
-              </div>
+      </div>
+
+      {shareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShareModal(false)}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Share Chat</h3>
+              <button onClick={() => setShareModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                <X className="w-5 h-5" />
+              </button>
             </div>
+            {shareLoading ? (
+              <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm py-4">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Creating share link...
+              </div>
+            ) : shareUrl ? (
+              <>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Anyone with this link can view this conversation:</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={shareUrl}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                    className="flex-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-200 outline-none"
+                  />
+                  <button
+                    onClick={copyShareUrl}
+                    className="px-3 py-2 rounded-lg bg-sky-500 text-white text-sm font-medium hover:bg-sky-400 transition-colors flex items-center gap-1.5"
+                  >
+                    {shareCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {shareCopied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 dark:text-slate-600 mt-3">This link never expires. You can revoke it later from Settings.</p>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </div>
           )}
           {error && (
             <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
@@ -488,6 +621,27 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               )}
             </div>
           )}
+          {pendingDocs.length > 0 && (
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {pendingDocs.map((doc, idx) => (
+                <div key={idx} className="relative group">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+                    <FileText className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
+                    <span className="truncate max-w-[120px]">{doc.file.name}</span>
+                    {!doc.result && (
+                      <Loader2 className="w-3 h-3 animate-spin text-slate-400" />
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeDoc(idx)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           {genMode && (
             <div className="flex items-center gap-2 mb-2">
               <input
@@ -518,6 +672,44 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               </button>
             </div>
           )}
+          {searchMode && (
+            <div className="mb-2 space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); handleSearch(); }
+                    if (e.key === 'Escape') { setSearchMode(false); setSearchQuery(''); setSearchResults(null); }
+                  }}
+                  placeholder="Search the web..."
+                  className="flex-1 bg-slate-100 dark:bg-slate-900 border border-sky-500/50 text-slate-900 dark:text-white text-sm px-3 py-2 rounded-lg outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20"
+                />
+                <button
+                  onClick={handleSearch}
+                  disabled={!searchQuery.trim() || searchLoading}
+                  className="px-3 py-2 rounded-lg bg-sky-500 text-white text-sm font-medium disabled:opacity-40 hover:bg-sky-400 transition-colors flex items-center gap-1.5 flex-shrink-0"
+                >
+                  {searchLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                  Search
+                </button>
+                <button
+                  onClick={() => { setSearchMode(false); setSearchQuery(''); setSearchResults(null); }}
+                  className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex-shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {searchResults && (
+                <div className="bg-sky-500/5 border border-sky-500/20 rounded-lg px-3 py-2 text-xs text-slate-600 dark:text-slate-300 max-h-32 overflow-y-auto">
+                  <p className="font-medium text-sky-400 mb-1">Search results will be included with your next message</p>
+                  <div className="markdown-content opacity-80" dangerouslySetInnerHTML={{ __html: marked.parse(searchResults) as string }} />
+                </div>
+              )}
+            </div>
+          )}
           <div className="relative bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus-within:border-sky-500/50 focus-within:ring-2 focus-within:ring-sky-500/20 transition-all">
             <textarea
               value={input}
@@ -538,7 +730,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
                 <>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept={`image/*,${getSupportedTypes()}`}
                     multiple
                     className="hidden"
                     id="image-upload"
@@ -558,11 +750,18 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
                   >
                     <Sparkles className="w-4 h-4" />
                   </button>
+                  <button
+                    onClick={() => { setSearchMode(!searchMode); setSearchQuery(''); setSearchResults(null); }}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors ${searchMode ? 'bg-sky-500/10 text-sky-400' : 'text-slate-500 dark:text-slate-400 hover:text-sky-400 dark:hover:text-sky-400 hover:bg-slate-300/40 dark:hover:bg-slate-700/40'}`}
+                    title="Search the web"
+                  >
+                    <Globe className="w-4 h-4" />
+                  </button>
                 </>
               )}
               <button
                 onClick={sendMessage}
-                disabled={(!input.trim() && pendingImages.length === 0) || sending}
+                disabled={(!input.trim() && pendingImages.length === 0 && pendingDocs.length === 0) || sending}
                 className="w-8 h-8 rounded-lg bg-gradient-to-r from-sky-500 to-emerald-500 text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center hover:scale-105 transition-transform"
               >
                 <Send className="w-4 h-4" />
