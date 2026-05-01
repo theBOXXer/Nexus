@@ -15,8 +15,8 @@ type SubTab = 'folders' | 'unfiled';
 export default function FolderView({ chats: allChats, categories: catsList, onSelectChat, onRefresh, updateChatLocally }: Props) {
   const [subTab, setSubTab] = useState<SubTab>('folders');
   const [dragOver, setDragOver] = useState<string | null>(null);
-  const [dragSrcIdx, setDragSrcIdx] = useState<number | null>(null);
-  const [dropInsertIdx, setDropInsertIdx] = useState<number | null>(null);
+  const [dragOverCat, setDragOverCat] = useState<string | null>(null);
+  const [catDragIdx, setCatDragIdx] = useState<number | null>(null);
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [colorPickerCat, setColorPickerCat] = useState<string | null>(null);
@@ -54,33 +54,26 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
   function onDragStartCat(e: React.DragEvent, idx: number, catId: string) {
     e.dataTransfer.setData('text/category', catId);
     e.dataTransfer.effectAllowed = 'move';
-    setDragSrcIdx(idx);
-    setDropInsertIdx(null);
+    setCatDragIdx(idx);
   }
 
-  function handleDragEnd() {
-    setDragSrcIdx(null);
-    setDropInsertIdx(null);
-  }
-
-  async function onDropCat(e: React.DragEvent) {
+  async function onDropCat(e: React.DragEvent, targetIdx: number) {
     e.preventDefault();
     e.stopPropagation();
+    setDragOverCat(null);
+    setCatDragIdx(null);
     const catId = e.dataTransfer.getData('text/category');
-    if (!catId || dropInsertIdx === null) return;
+    if (!catId) return;
 
     const srcIdx = catsList.findIndex((c) => c.id === catId);
-    if (srcIdx === -1) return;
-    const targetIdx = dropInsertIdx;
-    if (srcIdx === targetIdx || srcIdx === targetIdx - 1) return;
+    if (srcIdx === -1 || srcIdx === targetIdx) return;
 
     const reordered = [...catsList];
     const [moved] = reordered.splice(srcIdx, 1);
-    reordered.splice(targetIdx > srcIdx ? targetIdx - 1 : targetIdx, 0, moved);
+    const insertAt = targetIdx;
+    reordered.splice(insertAt, 0, moved);
 
     await Promise.all(reordered.map((cat, i) => categories.update(cat.id, { position: i })));
-    setDragSrcIdx(null);
-    setDropInsertIdx(null);
     onRefresh();
   }
 
@@ -150,13 +143,10 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
             const bucketId = b.id || '_unfiled';
             const Icon = dragOver === bucketId ? FolderOpen : b.icon;
             const active = dragOver === bucketId;
+            const catActive = dragOverCat === b.id;
             return (
-              <>
-                {dragSrcIdx !== null && dropInsertIdx === idx && dragSrcIdx !== idx && (
-                  <div key={`ins-${idx}`} className="col-span-full h-1 bg-sky-500 rounded-full mx-2" />
-                )}
-                <div
-                  key={bucketId}
+              <div
+                key={bucketId}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(bucketId); }}
                 onDragLeave={() => setDragOver(null)}
                 onDrop={(e) => onDropChat(e, b.id)}
@@ -167,16 +157,11 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
                 <div
                   draggable={!!b.id}
                   onDragStart={b.id ? (e) => onDragStartCat(e, idx, b.id) : undefined}
-                  onDragOver={b.id ? (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                    setDropInsertIdx(e.clientY < rect.top + rect.height / 2 ? idx : idx + 1);
-                  } : undefined}
-                  onDrop={b.id ? (e) => onDropCat(e) : undefined}
-                  onDragEnd={b.id ? handleDragEnd : undefined}
+                  onDragOver={b.id ? (e) => { e.preventDefault(); e.stopPropagation(); setDragOverCat(b.id); } : undefined}
+                  onDragLeave={b.id ? () => setDragOverCat(null) : undefined}
+                  onDrop={b.id ? (e) => onDropCat(e, idx) : undefined}
                   className={`p-4 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center gap-3 transition-colors ${
-                    dragSrcIdx === idx ? 'opacity-40' : ''
+                    catActive ? 'bg-emerald-500/10' : ''
                   } ${b.id ? 'cursor-grab active:cursor-grabbing' : ''}`}
                 >
                   {b.id && <GripVertical className="w-4 h-4 text-slate-400 dark:text-slate-600 flex-shrink-0" />}
@@ -235,6 +220,11 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
                       )}
                     </div>
                   </div>
+                  {b.id && catDragIdx !== null && (
+                    <div className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${catActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}>
+                      {catActive ? 'Release to reorder' : 'Drop zone'}
+                    </div>
+                  )}
                 </div>
                 <div className="p-3 space-y-1.5 min-h-[100px]">
                   {b.chats.length === 0 && (
@@ -261,12 +251,8 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
                   ))}
                 </div>
               </div>
-              </>
             );
           })}
-          {dragSrcIdx !== null && dropInsertIdx === buckets.length && dragSrcIdx !== buckets.length - 1 && (
-            <div className="col-span-full h-1 bg-sky-500 rounded-full mx-2" />
-          )}
         </div>
         ) : (
         <div className="max-w-4xl mx-auto">
