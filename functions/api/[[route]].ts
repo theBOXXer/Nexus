@@ -294,7 +294,7 @@ async function handleUpload(req: Request, env: Env, _userId: string): Promise<Re
   const key = `${crypto.randomUUID()}.${mimeType.split('/').pop() || 'png'}`;
   await env.IMAGES.put(key, buffer, { httpMetadata: { contentType: mimeType } });
 
-  const url = `https://nexus-images.blessf.workers.dev/${key}`;
+  const url = `https://pub-a5ed7db69cbb4f71a14a3706092b8c99.r2.dev/${key}`;
   return json({ url }, 201);
 }
 

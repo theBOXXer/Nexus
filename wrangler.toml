@@ -8,4 +8,4 @@ database_id = "d7cda549-134f-4764-851d-bc4d2dda95a9"
 
 [[r2_buckets]]
 binding = "IMAGES"
-bucket_name = "nexus-images"
+bucket_name = "nexus-uploads-store"
