@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays } from 'lucide-react';
-import { Chat, Message, Category, MODELS, messages, chats, llm } from '../lib/api';
+import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X } from 'lucide-react';
+import { Chat, Message, Category, MODELS, messages, chats, llm, upload } from '../lib/api';
 import { marked } from 'marked';
 
 interface Props {
@@ -19,6 +19,8 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [titleDraft, setTitleDraft] = useState('');
   const [editingDate, setEditingDate] = useState(false);
   const [dateDraft, setDateDraft] = useState('');
+  const [pendingImages, setPendingImages] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -135,19 +137,78 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     setEditingDate(false);
   }
 
+  function addImages(files: FileList | File[]) {
+    const arr = Array.from(files).filter((f) => f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024);
+    if (arr.length === 0) return;
+    const combined = [...pendingImages, ...arr].slice(0, 4);
+    setPendingImages(combined);
+    setPreviewUrls(combined.map((f) => URL.createObjectURL(f)));
+  }
+
+  function removeImage(idx: number) {
+    setPendingImages((prev) => prev.filter((_, i) => i !== idx));
+    setPreviewUrls((prev) => {
+      URL.revokeObjectURL(prev[idx]);
+      return prev.filter((_, i) => i !== idx);
+    });
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const blob = items[i].getAsFile();
+      if (blob && blob.type.startsWith('image/')) files.push(blob);
+    }
+    if (files.length > 0) {
+      e.preventDefault();
+      addImages(files);
+    }
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.files.length > 0) addImages(e.dataTransfer.files);
+  }
+
   async function sendMessage() {
-    if (!chat || !input.trim() || sending) return;
+    if (!chat || (!input.trim() && pendingImages.length === 0) || sending) return;
     const content = input.trim();
     setInput('');
     setSending(true);
     setError(null);
     shouldScrollRef.current = true;
 
+    const imageUrls: string[] = [];
+    if (pendingImages.length > 0) {
+      const uploads = new Promise<void>((resolve) => {
+        let done = 0;
+        pendingImages.forEach(async (file, idx) => {
+          try {
+            const res = await upload.image(file);
+            imageUrls[idx] = res.url;
+          } catch { /* skip failed uploads */ }
+          done++;
+          if (done === pendingImages.length) resolve();
+        });
+      });
+      await uploads;
+      setPendingImages([]);
+      setPreviewUrls([]);
+    }
+
     try {
-      const userMsg = await messages.create({ chat_id: chat.id, role: 'user', content });
+      const userMsg = await messages.create({ chat_id: chat.id, role: 'user', content, images: imageUrls.length > 0 ? imageUrls : undefined });
       setMsgs((prev) => [...prev, userMsg]);
 
-      if (msgs.length === 0) {
+      if (msgs.length === 0 && content) {
         const title = content.length > 50 ? content.slice(0, 50) + '...' : content;
         await chats.update(chat.id, { title });
       }
@@ -157,10 +218,11 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
         return;
       }
 
-      const conversation = [...msgs, { role: 'user', content } as Message].map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      const conversation = [...msgs, userMsg].map((m) => {
+        let msgImages: string[] = [];
+        try { msgImages = JSON.parse(m.images || '[]'); } catch { /* ignore */ }
+        return { role: m.role, content: m.content, images: msgImages.length > 0 ? msgImages : undefined };
+      });
 
       const res = await llm.chat(chat.model, conversation);
       const aiMsg = await messages.create({
@@ -196,7 +258,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const currentModel = MODELS.find((m) => m.id === chat.model);
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 min-w-0">
+    <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 min-w-0" onDragOver={handleDragOver} onDrop={handleDrop}>
       <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40 backdrop-blur">
         <div className="flex items-center gap-2 min-w-0">
           <Hash className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
@@ -324,10 +386,31 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
       <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40">
         <div className="max-w-3xl mx-auto">
+          {pendingImages.length > 0 && (
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {previewUrls.map((url, idx) => (
+                <div key={idx} className="relative group">
+                  <img src={url} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                  <button
+                    onClick={() => removeImage(idx)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {chat && (chat.model === 'deepseek-chat' || chat.model === 'deepseek-reasoner') && (
+                <span className="text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-lg px-2 py-1">
+                  DeepSeek doesn&apos;t support images — switch to GPT-4o or Claude
+                </span>
+              )}
+            </div>
+          )}
           <div className="relative bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus-within:border-sky-500/50 focus-within:ring-2 focus-within:ring-sky-500/20 transition-all">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onPaste={handlePaste}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -335,19 +418,36 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
                 }
               }}
               rows={1}
-              placeholder={`Message ${currentModel?.label}...`}
-              className="w-full bg-transparent text-slate-900 dark:text-white placeholder-slate-500 px-4 py-3 pr-12 resize-none focus:outline-none max-h-40"
+              placeholder={pendingImages.length > 0 ? 'Add a caption or just send...' : `Message ${currentModel?.label}...`}
+              className="w-full bg-transparent text-slate-900 dark:text-white placeholder-slate-500 px-4 py-3 pr-20 resize-none focus:outline-none max-h-40"
               style={{ minHeight: '48px' }}
             />
-            <button
-              onClick={sendMessage}
-              disabled={!input.trim() || sending}
-              className="absolute right-2 bottom-2 w-8 h-8 rounded-lg bg-gradient-to-r from-sky-500 to-emerald-500 text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center hover:scale-105 transition-transform"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+            <div className="absolute right-2 bottom-2 flex items-center gap-1">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                id="image-upload"
+                onChange={(e) => { if (e.target.files) { addImages(e.target.files); e.target.value = ''; } }}
+              />
+              <label
+                htmlFor="image-upload"
+                className="w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-sky-400 dark:hover:text-sky-400 flex items-center justify-center cursor-pointer hover:bg-slate-300/40 dark:hover:bg-slate-700/40 transition-colors"
+                title="Add images"
+              >
+                <ImagePlus className="w-4 h-4" />
+              </label>
+              <button
+                onClick={sendMessage}
+                disabled={(!input.trim() && pendingImages.length === 0) || sending}
+                className="w-8 h-8 rounded-lg bg-gradient-to-r from-sky-500 to-emerald-500 text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center hover:scale-105 transition-transform"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-600 mt-2 text-center">Shift + Enter for newline · Enter to send</p>
+          <p className="text-xs text-slate-400 dark:text-slate-600 mt-2 text-center">Shift + Enter for newline · Enter to send · Paste or drag images</p>
         </div>
       </div>
     </div>
@@ -356,6 +456,8 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
 function MessageBubble({ message, onHover, onLeave }: { message: Message; onHover: (id: string) => void; onLeave: () => void }) {
   const isUser = message.role === 'user';
+  let images: string[] = [];
+  try { images = JSON.parse(message.images || '[]'); } catch { /* ignore */ }
 
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -374,7 +476,7 @@ function MessageBubble({ message, onHover, onLeave }: { message: Message; onHove
         <div className={`flex items-center gap-2 mb-1 ${isUser ? 'flex-row-reverse' : ''}`}>
           <span className="text-sm font-semibold text-slate-900 dark:text-white">{isUser ? 'You' : 'Assistant'}</span>
           {message.model && !isUser && (
-            <span className="text-xs text-slate-400 dark:text-slate-500">{message.model}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{message.model}</span>
           )}
           <span className="text-xs text-slate-400 dark:text-slate-600">
             {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -382,6 +484,13 @@ function MessageBubble({ message, onHover, onLeave }: { message: Message; onHove
         </div>
         {isUser ? (
           <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-300/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 rounded-2xl rounded-br-sm px-4 py-3">
+            {images.length > 0 && (
+              <div className="flex flex-col gap-1.5 mb-2">
+                {images.map((url, i) => (
+                  <img key={i} src={url} alt="Attached" className="max-h-60 rounded-lg object-cover" />
+                ))}
+              </div>
+            )}
             {message.content}
           </div>
         ) : (

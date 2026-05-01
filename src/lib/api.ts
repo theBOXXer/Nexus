@@ -76,6 +76,7 @@ export type Message = {
   role: 'user' | 'assistant' | 'system';
   content: string;
   model: string | null;
+  images: string;
   created_at: string;
 };
 
@@ -108,12 +109,30 @@ export const chats = {
 
 export const messages = {
   list: (chatId: string) => get<Message[]>(`/messages?chat_id=${encodeURIComponent(chatId)}`),
-  create: (data: { chat_id: string; role: string; content: string; model?: string }) =>
+  create: (data: { chat_id: string; role: string; content: string; model?: string; images?: string[] }) =>
     post<Message>('/messages', data),
 };
 
+export const upload = {
+  image: async (file: File): Promise<{ url: string }> => {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE}/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || 'Upload failed');
+    }
+    return res.json();
+  },
+};
+
 export const llm = {
-  chat: (model: string, msgs: { role: string; content: string }[]) =>
+  chat: (model: string, msgs: { role: string; content: string; images?: string[] }[]) =>
     post<{ content: string }>('/llm-chat', { model, messages: msgs }),
 };
 

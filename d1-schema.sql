@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS messages (
   role TEXT NOT NULL DEFAULT 'user',
   content TEXT NOT NULL DEFAULT '',
   model TEXT,
+  images TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

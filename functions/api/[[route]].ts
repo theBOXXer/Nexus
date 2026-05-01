@@ -4,6 +4,7 @@ interface Env {
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
+  IMAGES?: { put(key: string, value: ArrayBuffer | ReadableStream, options?: { httpMetadata?: { contentType?: string } }): Promise<{ key: string } | null>; get(key: string): Promise<{ body: ReadableStream } | null> };
 }
 
 interface JWTPayload {
@@ -235,6 +236,7 @@ interface Message {
   role: string;
   content: string;
   model: string | null;
+  images: string;
   created_at: string;
 }
 
@@ -250,16 +252,50 @@ async function listMessages(req: Request, env: Env, userId: string): Promise<Res
 }
 
 async function createMessage(req: Request, env: Env, userId: string): Promise<Response> {
-  const { chat_id, role, content, model } = await req.json() as { chat_id?: string; role?: string; content?: string; model?: string };
+  const { chat_id, role, content, model, images } = await req.json() as { chat_id?: string; role?: string; content?: string; model?: string; images?: string[] };
   if (!chat_id || !content) return error('chat_id and content required');
   const chat = await env.DB.prepare('SELECT id FROM chats WHERE id = ? AND user_id = ?').bind(chat_id, userId).first();
   if (!chat) return error('Chat not found', 404);
   const id = crypto.randomUUID();
-  await env.DB.prepare('INSERT INTO messages (id, chat_id, user_id, role, content, model) VALUES (?, ?, ?, ?, ?, ?)')
-    .bind(id, chat_id, userId, role || 'user', content, model || null).run();
+  const imagesJson = JSON.stringify(images || []);
+  await env.DB.prepare('INSERT INTO messages (id, chat_id, user_id, role, content, model, images) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, chat_id, userId, role || 'user', content, model || null, imagesJson).run();
   await env.DB.prepare('UPDATE chats SET updated_at = ? WHERE id = ?').bind(new Date().toISOString(), chat_id).run();
   const row = await env.DB.prepare('SELECT * FROM messages WHERE id = ?').bind(id).first();
   return json(row, 201);
+}
+
+// ─── Image Upload ────────────────────────────────────────────────────────────
+
+async function handleUpload(req: Request, env: Env, _userId: string): Promise<Response> {
+  if (!env.IMAGES) return error('R2 not configured', 500);
+  const contentType = req.headers.get('Content-Type') || '';
+  if (!contentType.includes('multipart/form-data') && !contentType.includes('application/octet-stream')) {
+    return error('Expected image data', 400);
+  }
+
+  let buffer: ArrayBuffer;
+  let mimeType = 'image/png';
+
+  if (contentType.includes('multipart/form-data')) {
+    const formData = await req.formData();
+    const file = formData.get('file');
+    if (!file || !(file instanceof File)) return error('No file provided', 400);
+    if (file.size > 5 * 1024 * 1024) return error('File too large (max 5MB)', 400);
+    mimeType = file.type || 'image/png';
+    buffer = await file.arrayBuffer();
+  } else {
+    if ((req.body?.length || 0) > 5 * 1024 * 1024) return error('File too large (max 5MB)', 400);
+    const blob = await req.blob();
+    mimeType = blob.type || 'image/png';
+    buffer = await blob.arrayBuffer();
+  }
+
+  const key = `${crypto.randomUUID()}.${mimeType.split('/').pop() || 'png'}`;
+  await env.IMAGES.put(key, buffer, { httpMetadata: { contentType: mimeType } });
+
+  const url = `https://nexus-images.blessf.workers.dev/${key}`;
+  return json({ url }, 201);
 }
 
 // ─── LLM Chat ────────────────────────────────────────────────────────────────
@@ -274,19 +310,32 @@ const MODEL_MAP: Record<string, 'openai' | 'anthropic' | 'deepseek'> = {
 };
 
 async function handleLLMChat(req: Request, env: Env): Promise<Response> {
-  const { model, messages } = await req.json() as { model?: string; messages?: { role: string; content: string }[] };
+  const { model, messages } = await req.json() as { model?: string; messages?: { role: string; content: string; images?: string[] }[] };
   if (!model || !messages) return error('model and messages required');
 
   const provider = MODEL_MAP[model];
   if (!provider) return error(`Unsupported model: ${model}`);
 
+  const hasImages = messages.some((m) => m.images && m.images.length > 0);
+
   if (provider === 'openai') {
     const key = env.OPENAI_API_KEY;
     if (!key) return error('OPENAI_API_KEY not configured', 500);
+
+    const openaiMessages = messages.map((m) => {
+      if (!m.images || m.images.length === 0) return { role: m.role, content: m.content };
+      const parts: { type: string; text?: string; image_url?: { url: string } }[] = [];
+      if (m.content) parts.push({ type: 'text', text: m.content });
+      for (const url of m.images) {
+        parts.push({ type: 'image_url', image_url: { url } });
+      }
+      return { role: m.role, content: parts };
+    });
+
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model, messages }),
+      body: JSON.stringify({ model, messages: openaiMessages }),
     });
     if (!res.ok) return error(`OpenAI: ${await res.text()}`, 502);
     const data = await res.json() as { choices: { message: { content: string } }[] };
@@ -294,6 +343,9 @@ async function handleLLMChat(req: Request, env: Env): Promise<Response> {
   }
 
   if (provider === 'deepseek') {
+    if (hasImages) {
+      return error('DeepSeek does not support image analysis. Switch to GPT-4o or Claude.', 400);
+    }
     const key = env.DEEPSEEK_API_KEY;
     if (!key) return error('DEEPSEEK_API_KEY not configured', 500);
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -309,11 +361,28 @@ async function handleLLMChat(req: Request, env: Env): Promise<Response> {
   const key = env.ANTHROPIC_API_KEY;
   if (!key) return error('ANTHROPIC_API_KEY not configured', 500);
   const system = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');
-  const nonSystem = messages.filter((m) => m.role !== 'system');
+
+  const anthropicMessages = await Promise.all(messages.filter((m) => m.role !== 'system').map(async (m) => {
+    if (!m.images || m.images.length === 0) return { role: m.role, content: [{ type: 'text', text: m.content }] };
+    const parts: { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[] = [];
+    if (m.content) parts.push({ type: 'text', text: m.content });
+    for (const url of m.images) {
+      try {
+        const imgRes = await fetch(url);
+        if (!imgRes.ok) continue;
+        const imgBuffer = await imgRes.arrayBuffer();
+        const mediaType = imgRes.headers.get('Content-Type') || 'image/png';
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
+        parts.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } });
+      } catch { continue; }
+    }
+    return { role: m.role, content: parts };
+  }));
+
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model, max_tokens: 4096, system: system || undefined, messages: nonSystem }),
+    body: JSON.stringify({ model, max_tokens: 4096, system: system || undefined, messages: anthropicMessages }),
   });
   if (!res.ok) return error(`Anthropic: ${await res.text()}`, 502);
   const data = await res.json() as { content: { text: string }[] };
@@ -421,6 +490,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // LLM Chat
     if (path === '/llm-chat' && request.method === 'POST') {
       const res = await handleLLMChat(request, env);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+
+    // Image Upload
+    if (path === '/upload' && request.method === 'POST') {
+      const res = await handleUpload(request, env, userId);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
     }
