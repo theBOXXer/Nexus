@@ -144,7 +144,9 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                       ? 'border-emerald-500/60 bg-emerald-500/10 scale-[1.03] shadow-lg shadow-emerald-500/10'
                       : selectedDay === toKey(d)
                         ? 'border-sky-500/60 bg-sky-500/10'
-                        : 'border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                        : isToday
+                          ? 'border-sky-400/70 bg-sky-500/5 shadow-[0_0_14px_rgba(56,189,248,0.25)] ring-1 ring-sky-400/30'
+                          : 'border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
                   }`}
                 >
                   <div className="flex items-center justify-between">
