@@ -218,7 +218,7 @@ function App() {
           <>
             {tab === 'chat' && <ChatView chat={activeChat} category={activeCategory} onRefresh={refresh} updateChatLocally={updateChatLocally} />}
             {tab === 'calendar' && (
-              <CalendarView chats={chatList} categories={categories} onSelectChat={handleSelectChat} onNewChat={handleNewChatForDate} updateChatLocally={updateChatLocally} onRefresh={refresh} />
+              <CalendarView chats={chatList} categories={categories} onSelectChat={handleSelectChat} onNewChat={handleNewChatForDate} updateChatLocally={updateChatLocally} onRefresh={refresh} isMobile={isMobile} />
             )}
             {tab === 'folders' && (
               <FolderView chats={chatList} categories={categories} onSelectChat={handleSelectChat} onRefresh={refresh} updateChatLocally={updateChatLocally} />

@@ -9,6 +9,7 @@ interface Props {
   onNewChat: (date: Date) => void;
   updateChatLocally: (chatId: string, updates: Partial<Chat>) => void;
   onRefresh: () => void;
+  isMobile: boolean;
 }
 
 function startOfMonth(d: Date) {
@@ -23,7 +24,7 @@ function toKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-export default function CalendarView({ chats, categories, onSelectChat, onNewChat, updateChatLocally, onRefresh }: Props) {
+export default function CalendarView({ chats, categories, onSelectChat, onNewChat, updateChatLocally, onRefresh, isMobile }: Props) {
   const [month, setMonth] = useState(startOfMonth(new Date()));
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const [dragChatId, setDragChatId] = useState<string | null>(null);
@@ -271,8 +272,62 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                                 minute: '2-digit',
                               })}
                             </span>
+          </div>
+          {isMobile && selectedDay && (() => {
+            const dayChats = chatsByDay.get(selectedDay) || [];
+            if (dayChats.length === 0) return null;
+            return (
+              <div className="md:hidden mt-4 border-t border-slate-200 dark:border-slate-800 pt-3">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {new Date(selectedDay).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </span>
+                  <button onClick={() => setSelectedDay(null)} className="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white p-1">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  {dayChats.map((c) => {
+                    const cat = c.category_id ? catById.get(c.category_id) : null;
+                    const isDragging = dragChatId === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        draggable
+                        onDragStart={(e) => onDragStartChat(e, c.id)}
+                        onDragEnd={onDragEndChat}
+                        onClick={() => onSelectChat(c.id)}
+                        className={`w-full text-left p-3 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition-all group cursor-grab active:cursor-grabbing ${
+                          isDragging ? 'opacity-30 scale-95' : ''
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-slate-900 dark:text-white font-medium truncate">{c.title}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              {cat && (
+                                <span
+                                  className="text-[10px] px-1.5 py-0.5 rounded-full border"
+                                  style={{ color: cat.color, borderColor: cat.color + '40', background: cat.color + '10' }}
+                                >
+                                  {cat.name}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                                {new Date(c.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
                           </div>
                         </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
                       </div>
                     </button>
                   );
