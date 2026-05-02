@@ -502,7 +502,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               {category.name}
             </span>
           )}
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
             {editingDate ? (
               <input
                 type="date"
