@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil, Share2, FileText, Globe, Mic } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil, Share2, FileText, Globe, Mic, Plus } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm, upload, generate, share, webSearch } from '../lib/api';
 import { useMode } from '../contexts/ModeContext';
 import { marked, Renderer } from 'marked';
@@ -61,6 +61,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [genLoading, setGenLoading] = useState(false);
   const [genSize, setGenSize] = useState<'1024x1024' | '1792x1024' | '1024x1792'>('1024x1024');
   const [voiceListening, setVoiceListening] = useState(false);
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const voiceRecRef = useRef<SpeechRecognition | null>(null);
   const voiceSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
   const voiceBaseRef = useRef('');
@@ -809,38 +810,54 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
               style={{ minHeight: '48px' }}
             />
             <div className="absolute right-2 bottom-2 flex items-center gap-1">
+              <input
+                type="file"
+                accept={`image/*,${getSupportedTypes()}`}
+                multiple
+                className="hidden"
+                id="image-upload"
+                onChange={(e) => { if (e.target.files) { addImages(e.target.files); e.target.value = ''; } }}
+              />
               {chat.model !== 'dall-e-3' && chat.model !== 'none' && (
-                <>
-                  <input
-                    type="file"
-                    accept={`image/*,${getSupportedTypes()}`}
-                    multiple
-                    className="hidden"
-                    id="image-upload"
-                    onChange={(e) => { if (e.target.files) { addImages(e.target.files); e.target.value = ''; } }}
-                  />
-                  <label
-                    htmlFor="image-upload"
-                    className="w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-sky-400 dark:hover:text-sky-400 flex items-center justify-center cursor-pointer hover:bg-slate-300/40 dark:hover:bg-slate-700/40 transition-colors"
-                    title="Add images"
-                  >
-                    <ImagePlus className="w-4 h-4" />
-                  </label>
+                <div className="relative">
                   <button
-                    onClick={() => { setGenMode(!genMode); setGenPrompt(''); }}
-                    className="w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-amber-400 dark:hover:text-amber-400 flex items-center justify-center cursor-pointer hover:bg-slate-300/40 dark:hover:bg-slate-700/40 transition-colors"
-                    title="Generate image"
+                    onClick={() => setPlusMenuOpen(!plusMenuOpen)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                      genMode ? 'bg-amber-500/10 text-amber-400' : searchMode ? 'bg-sky-500/10 text-sky-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/40 dark:hover:bg-slate-700/40'
+                    }`}
+                    title="More actions"
                   >
-                    <Sparkles className="w-4 h-4" />
+                    <Plus className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => { setSearchMode(!searchMode); setSearchQuery(''); setSearchResults(null); }}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors ${searchMode ? 'bg-sky-500/10 text-sky-400' : 'text-slate-500 dark:text-slate-400 hover:text-sky-400 dark:hover:text-sky-400 hover:bg-slate-300/40 dark:hover:bg-slate-700/40'}`}
-                    title="Search the web"
-                  >
-                    <Globe className="w-4 h-4" />
-                  </button>
-                </>
+                  {plusMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setPlusMenuOpen(false)} />
+                      <div className="absolute bottom-full right-0 mb-2 z-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-1 min-w-[170px]">
+                        <button
+                          onClick={() => { document.getElementById('image-upload')?.click(); setPlusMenuOpen(false); }}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full text-sm text-slate-700 dark:text-slate-200"
+                        >
+                          <ImagePlus className="w-4 h-4 text-sky-400" />
+                          Attach file
+                        </button>
+                        <button
+                          onClick={() => { setGenMode(!genMode); setGenPrompt(''); setPlusMenuOpen(false); }}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full text-sm text-slate-700 dark:text-slate-200"
+                        >
+                          <Sparkles className="w-4 h-4 text-amber-400" />
+                          Generate image
+                        </button>
+                        <button
+                          onClick={() => { setSearchMode(!searchMode); setSearchQuery(''); setSearchResults(null); setPlusMenuOpen(false); }}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full text-sm text-slate-700 dark:text-slate-200"
+                        >
+                          <Globe className="w-4 h-4 text-sky-400" />
+                          Web search
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
               {voiceSupported && (
                 <button
