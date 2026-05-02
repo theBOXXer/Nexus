@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil, Share2, FileText, Globe, Mic, Plus, ArrowLeft } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil, Share2, FileText, Globe, Mic, Plus, ArrowLeft } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm, upload, generate, share, webSearch } from '../lib/api';
 import { useMode } from '../contexts/ModeContext';
 import { marked, Renderer } from 'marked';
@@ -477,7 +477,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally,
             <div className="w-8" />
           )}
           <div className="flex items-center gap-2 min-w-0">
-          <Hash className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+          
           {editingTitle && chat ? (
             <input
               ref={titleInputRef}
