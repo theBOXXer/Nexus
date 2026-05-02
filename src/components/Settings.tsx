@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Archive, RotateCcw, Trash2, X, Zap, GraduationCap, Brain, Share2, Copy, Check } from 'lucide-react';
+import { Archive, RotateCcw, Trash2, X, Zap, GraduationCap, Brain, Share2, Copy, Check, Sun, Moon } from 'lucide-react';
 import { Chat, chats, share, SharedLink } from '../lib/api';
 import { useMode } from '../contexts/ModeContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Props {
   archivedChats: Chat[];
@@ -11,6 +12,7 @@ interface Props {
 
 export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
   const { mode, setMode } = useMode();
+  const { theme, toggle } = useTheme();
   const [sharedLinks, setSharedLinks] = useState<SharedLink[]>([]);
   const [copyId, setCopyId] = useState<string | null>(null);
 
@@ -56,6 +58,41 @@ export default function Settings({ archivedChats, onClose, onRefresh }: Props) {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl mx-auto">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-slate-500/10 flex items-center justify-center">
+              {theme === 'dark' ? <Moon className="w-5 h-5 text-slate-400" /> : <Sun className="w-5 h-5 text-amber-400" />}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Theme</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Switch between dark and light appearance.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 mb-8">
+            <button
+              onClick={() => toggle()}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                theme === 'dark'
+                  ? 'bg-sky-500 text-white shadow-sm'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'
+              }`}
+            >
+              <Moon className="w-4 h-4" />
+              Dark
+            </button>
+            <button
+              onClick={() => toggle()}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                theme === 'light'
+                  ? 'bg-sky-500 text-white shadow-sm'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'
+              }`}
+            >
+              <Sun className="w-4 h-4" />
+              Light
+            </button>
+          </div>
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center">
               <Brain className="w-5 h-5 text-sky-400" />

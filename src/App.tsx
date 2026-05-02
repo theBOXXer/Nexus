@@ -168,7 +168,7 @@ function App() {
           })}
         </div>
         <div className="flex items-center gap-1 ml-auto">
-          <ThemeToggle />
+          <div className="hidden md:flex"> <ThemeToggle /> </div>
           <button
             onClick={() => setShowSettings((v) => !v)}
             className={`hidden md:flex items-center gap-2 px-3.5 h-8 rounded-lg text-sm font-medium transition-all ${
