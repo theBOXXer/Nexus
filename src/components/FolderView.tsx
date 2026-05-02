@@ -242,11 +242,6 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
                       {collapsed.has(b.id) ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </span>
                   )}
-                  {b.id && catDragIdx !== null && (
-                    <div className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${catActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}>
-                      {catActive ? 'Release to reorder' : 'Drop zone'}
-                    </div>
-                  )}
                 </div>
                 {!collapsed.has(b.id) && (
                 <div className="p-3 space-y-1.5 min-h-[100px]">
