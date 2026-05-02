@@ -340,7 +340,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                           </div>
                         </>
                       )}
-                      {hoveredDay === toKey(d) && (
+                      {!isMobile && hoveredDay === toKey(d) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -570,6 +570,15 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
             </div>
           </div>
         </>
+      )}
+      {isMobile && (
+        <button
+          onClick={() => onNewChat(selectedDay ? new Date(selectedDay) : new Date())}
+          className="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-sky-500 hover:bg-sky-400 text-white shadow-lg shadow-sky-500/30 flex items-center justify-center transition-all z-50"
+          title="New chat"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
       )}
     </div>
   );
