@@ -281,7 +281,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                       onDragLeave={() => setDragOverDay(null)}
                       onDrop={(e) => onDropChatOnDay(e, d)}
                       onClick={() => setSelectedDay(selectedDay === toKey(d) ? null : toKey(d))}
-                      className={`${isMobile ? 'aspect-[1/1.15]' : 'aspect-square'} rounded-lg border p-2 flex flex-col cursor-pointer transition-all relative ${
+                      className={`aspect-square rounded-lg border p-2 flex flex-col cursor-pointer transition-all relative ${
                         dragOverDay === toKey(d)
                           ? 'border-emerald-500/60 bg-emerald-500/10 scale-[1.03] shadow-lg shadow-emerald-500/10'
                           : selectedDay === toKey(d)
