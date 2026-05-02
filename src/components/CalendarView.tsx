@@ -136,20 +136,23 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
 
   return (
     <div className="flex-1 flex bg-white dark:bg-slate-950 overflow-hidden min-h-0">
-      {isMobile && selectedDay ? (
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 px-4 bg-slate-100/40 dark:bg-slate-900/40">
+      {isMobile && selectedDay && viewMode === 'month' ? (
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="h-12 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 px-3 bg-slate-100/40 dark:bg-slate-900/40">
             <button
               onClick={() => setSelectedDay(null)}
-              className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center"
+              className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
-            <span className="font-semibold text-slate-900 dark:text-white text-sm">
-              {new Date(selectedDay).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            <span className="font-semibold text-slate-900 dark:text-white text-xs">
+              {new Date(selectedDay).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              ({chatsByDay.get(selectedDay)?.length || 0} chats)
             </span>
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
             {(() => {
               const dayChats = chatsByDay.get(selectedDay) || [];
               if (dayChats.length === 0) {
