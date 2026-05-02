@@ -249,14 +249,15 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
             </div>
 
             <div className="flex-1 overflow-auto p-5">
-              <div className="grid grid-cols-7 gap-1 mb-1">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                  <div key={d} className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider py-2 text-center">
-                    {d}
-                  </div>
-                ))}
-              </div>
-            </div>
+              {(viewMode === 'month' || !isMobile) && (
+                <div className="grid grid-cols-7 gap-1 mb-1">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+                    <div key={d} className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider py-2 text-center">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+              )}
 
             {viewMode === 'month' ? (
               <div className="grid grid-cols-7 gap-1 select-none">
@@ -480,7 +481,8 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                   );
                 })}
               </div>
-            )}
+)}
+            </div>
           </div>
 
           <div className="hidden md:flex md:flex-col w-80 border-l border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40">
