@@ -329,7 +329,7 @@ const MODEL_MAP: Record<string, 'openai' | 'anthropic' | 'deepseek'> = {
 };
 
 async function handleLLMChat(req: Request, env: Env): Promise<Response> {
-  const { model, messages } = await req.json() as { model?: string; messages?: { role: string; content: string; images?: string[] }[] };
+  const { model, messages, size } = await req.json() as { model?: string; messages?: { role: string; content: string; images?: string[] }[]; size?: string };
   if (!model || !messages) return error('model and messages required');
 
   const provider = MODEL_MAP[model];
@@ -348,7 +348,7 @@ async function handleLLMChat(req: Request, env: Env): Promise<Response> {
     const imgRes = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model: 'dall-e-3', prompt, n: 1, size: '1024x1024' }),
+      body: JSON.stringify({ model: 'dall-e-3', prompt, n: 1, size: size || '1024x1024' }),
     });
     if (!imgRes.ok) return error(`DALL-E: ${await imgRes.text()}`, 502);
     const imgData = await imgRes.json() as { data: { url: string }[] };

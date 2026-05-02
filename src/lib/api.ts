@@ -147,8 +147,8 @@ export const upload = {
 };
 
 export const llm = {
-  chat: (model: string, msgs: { role: string; content: string; images?: string[] }[]) =>
-    post<{ content: string; images?: string[] }>('/llm-chat', { model, messages: msgs }),
+  chat: (model: string, msgs: { role: string; content: string; images?: string[] }[], size?: string) =>
+    post<{ content: string; images?: string[] }>('/llm-chat', { model, messages: msgs, size }),
 };
 
 export const generate = {
