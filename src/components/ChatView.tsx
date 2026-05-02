@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil, Share2, FileText, Globe, Mic, Plus } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil, Share2, FileText, Globe, Mic, Plus, ArrowLeft } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm, upload, generate, share, webSearch } from '../lib/api';
 import { useMode } from '../contexts/ModeContext';
 import { marked, Renderer } from 'marked';
@@ -35,9 +35,11 @@ interface Props {
   category: Category | null;
   onRefresh: () => void;
   updateChatLocally: (chatId: string, updates: Partial<Chat>) => void;
+  isMobile?: boolean;
+  onBack?: () => void;
 }
 
-export default function ChatView({ chat, category, onRefresh, updateChatLocally }: Props) {
+export default function ChatView({ chat, category, onRefresh, updateChatLocally, isMobile, onBack }: Props) {
   const [msgs, setMsgs] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -466,8 +468,15 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 min-w-0 min-h-0" onDragOver={handleDragOver} onDrop={handleDrop} onPaste={handlePaste}>
-      <div className="h-14 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40 backdrop-blur">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="h-14 border-b border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40 backdrop-blur">
+          {isMobile && onBack ? (
+            <button onClick={onBack} className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          ) : (
+            <div className="w-8" />
+          )}
+          <div className="flex items-center gap-2 min-w-0">
           <Hash className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
           {editingTitle && chat ? (
             <input

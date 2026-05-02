@@ -216,7 +216,7 @@ function App() {
           />
         ) : (
           <>
-            {tab === 'chat' && <ChatView chat={activeChat} category={activeCategory} onRefresh={refresh} updateChatLocally={updateChatLocally} />}
+            {tab === 'chat' && <ChatView chat={activeChat} category={activeCategory} onRefresh={refresh} updateChatLocally={updateChatLocally} isMobile={isMobile} onBack={isMobile ? () => setTab('calendar') : undefined} />}
             {tab === 'calendar' && (
               <CalendarView chats={chatList} categories={categories} onSelectChat={handleSelectChat} onNewChat={handleNewChatForDate} updateChatLocally={updateChatLocally} onRefresh={refresh} isMobile={isMobile} />
             )}
