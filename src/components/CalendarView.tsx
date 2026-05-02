@@ -290,11 +290,9 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                           <span className={`text-base font-semibold ${isToday ? 'text-sky-500 dark:text-sky-400 font-bold' : isWeekend ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}>
                             {d.getDate()}
                           </span>
-                          {dayChats.length > 0 && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium">
-                              {dayChats.length}
-                            </span>
-                          )}
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${dayChats.length > 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-transparent text-transparent'}`}>
+                            {dayChats.length}
+                          </span>
                         </div>
                       ) : (
                         <>
