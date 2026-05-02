@@ -82,6 +82,15 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
 return computed === hashHex;
 }
 
+// ─── Auth middleware ─────────────────────────────────────────────────────────
+
+async function requireAuth(request: Request, env: Env): Promise<{ userId: string; email: string }> {
+  const auth = request.headers.get('Authorization');
+  if (!auth || !auth.startsWith('Bearer ')) throw new Error('Missing token');
+  const payload = await verifyJWT(auth.slice(7), env.JWT_SECRET);
+  return { userId: payload.sub, email: payload.email };
+}
+
 // ─── Rate Limiting ───────────────────────────────────────────────────
 
 interface RateLimitConfig {
