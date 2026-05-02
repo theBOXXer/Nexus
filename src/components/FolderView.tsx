@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Folder, FolderOpen, MessageSquare, Inbox, GripVertical, Archive, FolderTree } from 'lucide-react';
+import { Folder, FolderOpen, MessageSquare, Inbox, GripVertical, Archive, FolderTree, ChevronDown, ChevronRight } from 'lucide-react';
 import { Chat, Category, CATEGORY_COLORS, chats, categories } from '../lib/api';
 
 interface Props {
@@ -20,9 +20,25 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [colorPickerCat, setColorPickerCat] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('nexus_collapsed_folders');
+      return saved ? new Set(JSON.parse(saved)) : new Set<string>();
+    } catch { return new Set<string>(); }
+  });
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const unfiledChats = allChats.filter((c) => !c.category_id);
+
+  function toggleCollapse(catId: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(catId)) next.delete(catId);
+      else next.add(catId);
+      localStorage.setItem('nexus_collapsed_folders', JSON.stringify([...next]));
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!colorPickerCat) return;
@@ -160,9 +176,10 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
                   onDragOver={b.id ? (e) => { e.preventDefault(); e.stopPropagation(); setDragOverCat(b.id); } : undefined}
                   onDragLeave={b.id ? () => setDragOverCat(null) : undefined}
                   onDrop={b.id ? (e) => onDropCat(e, idx) : undefined}
+                  onClick={b.id ? () => toggleCollapse(b.id) : undefined}
                   className={`p-4 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center gap-3 transition-colors ${
                     catActive ? 'bg-emerald-500/10' : ''
-                  } ${b.id ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  } ${b.id ? 'cursor-pointer' : ''}`}
                 >
                   {b.id && <GripVertical className="w-4 h-4 text-slate-400 dark:text-slate-600 flex-shrink-0" />}
                   <div
@@ -187,9 +204,9 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
                       />
                     ) : (
                       <div
-                        onClick={b.id ? (e) => { e.stopPropagation(); startRename(b.id!, b.name); } : undefined}
-                        className={`text-slate-900 dark:text-white font-semibold truncate ${b.id ? 'cursor-pointer hover:text-sky-300 transition-colors' : ''}`}
-                        title={b.id ? 'Click to rename' : undefined}
+                        onDoubleClick={b.id ? (e) => { e.stopPropagation(); startRename(b.id!, b.name); } : undefined}
+                        className={`text-slate-900 dark:text-white font-semibold truncate ${b.id ? 'cursor-pointer hover:text-sky-300 transition-colors select-none' : ''}`}
+                        title={b.id ? 'Double-click to rename' : undefined}
                       >
                         {b.name}
                       </div>
@@ -220,12 +237,18 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
                       )}
                     </div>
                   </div>
+                  {b.id && (
+                    <span className="text-slate-400 dark:text-slate-600 flex-shrink-0">
+                      {collapsed.has(b.id) ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </span>
+                  )}
                   {b.id && catDragIdx !== null && (
                     <div className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${catActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}>
                       {catActive ? 'Release to reorder' : 'Drop zone'}
                     </div>
                   )}
                 </div>
+                {!collapsed.has(b.id) && (
                 <div className="p-3 space-y-1.5 min-h-[100px]">
                   {b.chats.length === 0 && (
                     <div className="text-center text-xs text-slate-400 dark:text-slate-600 py-6 italic">
@@ -250,6 +273,7 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             );
           })}
