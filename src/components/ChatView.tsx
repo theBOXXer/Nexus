@@ -913,10 +913,10 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit, onViewImag
   if (isDeleted) {
     return (
       <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isUser ? 'bg-slate-300 dark:bg-slate-700 opacity-30' : 'bg-gradient-to-br from-sky-500/30 to-emerald-500/30'}`}>
+        <div className={`hidden md:flex w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isUser ? 'bg-slate-300 dark:bg-slate-700 opacity-30' : 'bg-gradient-to-br from-sky-500/30 to-emerald-500/30'}`}>
           {isUser ? <User className="w-4 h-4 text-slate-400" /> : <Bot className="w-4 h-4 text-white/30" />}
         </div>
-        <div className="min-w-0 max-w-[75%]">
+        <div className="min-w-0 max-w-full md:max-w-[75%]">
           <div className={`flex items-center gap-2 mb-1 ${isUser ? 'flex-row-reverse' : ''}`}>
             <span className="text-sm font-semibold text-slate-500 dark:text-slate-500">{isUser ? 'You' : 'Assistant'}</span>
             <span className="text-xs text-slate-400 dark:text-slate-600">
@@ -951,14 +951,14 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit, onViewImag
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
-        className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+        className={`hidden md:flex w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
           isUser ? 'bg-slate-300 dark:bg-slate-700' : 'bg-gradient-to-br from-sky-500 to-emerald-500'
         }`}
       >
         {isUser ? <User className="w-4 h-4 text-slate-700 dark:text-slate-200" /> : <Bot className="w-4 h-4 text-white" />}
       </div>
       <div
-        className={`min-w-0 max-w-[90%] md:max-w-[75%] group relative ${isUser ? 'items-end' : ''} ${editing ? '!min-w-[600px]' : ''}`}
+        className={`min-w-0 max-w-full md:max-w-[75%] group relative ${isUser ? 'items-end' : ''} ${editing ? '!min-w-[600px]' : ''}`}
         onMouseEnter={isUser ? undefined : () => onHover(message.id)}
         onMouseLeave={isUser ? undefined : onLeave}
       >
@@ -972,7 +972,7 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit, onViewImag
           </span>
         </div>
         {editing ? (
-          <div className={`w-full min-w-[600px] rounded-2xl ${isUser ? 'rounded-br-sm' : 'rounded-bl-sm'} px-4 py-3 ${isUser ? 'bg-slate-300/60 dark:bg-slate-700/60' : 'bg-slate-200/60 dark:bg-slate-800/60'}`}>
+          <div className={`w-full min-w-[600px] rounded-2xl ${isUser ? 'rounded-br-sm bg-sky-500/20 dark:bg-sky-500/15' : 'rounded-bl-sm bg-slate-200/60 dark:bg-slate-800/60'} px-4 py-3`}>
             <textarea
               ref={textareaRef}
               autoFocus
@@ -991,7 +991,7 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit, onViewImag
             </div>
           </div>
         ) : isUser ? (
-          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-slate-300/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 rounded-2xl rounded-br-sm px-4 py-3">
+          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words bg-sky-500/20 dark:bg-sky-500/15 text-sky-900 dark:text-sky-100 rounded-2xl rounded-br-sm px-4 py-3">
             {images.length > 0 && (
               <div className="flex flex-col gap-1.5 mb-2">
                 {images.map((url, i) => (
