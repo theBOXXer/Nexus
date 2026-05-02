@@ -138,68 +138,80 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
     <div className="flex-1 flex bg-white dark:bg-slate-950 overflow-hidden min-h-0">
       {isMobile && selectedDay && viewMode === 'month' ? (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="h-12 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 px-3 bg-slate-100/40 dark:bg-slate-900/40">
-            <button
-              onClick={() => setSelectedDay(null)}
-              className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <span className="font-semibold text-slate-900 dark:text-white text-xs">
-              {new Date(selectedDay).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </span>
-            <span className="text-xs text-slate-400 dark:text-slate-500">
-              ({chatsByDay.get(selectedDay)?.length || 0} chats)
-            </span>
+          <div className="flex-1 overflow-auto p-2">
+            {(viewMode === 'month' || !isMobile) && (
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+                  <div key={d} className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider py-1 text-center">
+                    {d}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="grid grid-cols-7 gap-1 select-none">
+              {cells.map((d, i) => {
+                if (!d) return <div key={i} className="aspect-square" />;
+                const dayChats = chatsByDay.get(toKey(d)) || [];
+                const isToday = sameDay(d, new Date());
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                const dominantCat = dayChats.length > 0 ? dayChats.reduce((prev, c) => {
+                  const prevCat = prev?.category_id ? catById.get(prev.category_id) : null;
+                  const currCat = c.category_id ? catById.get(c.category_id) : null;
+                  return currCat ? c : prev;
+                }, dayChats[0])?.category_id : null;
+                const dotColor = dominantCat && catById.get(dominantCat)?.color;
+                return (
+                  <div
+                    key={i}
+                    onClick={() => setSelectedDay(selectedDay === toKey(d) ? null : toKey(d))}
+                    className={`aspect-square rounded-lg border p-1 flex flex-col cursor-pointer transition-all relative ${
+                      selectedDay === toKey(d)
+                        ? 'border-sky-500/60 bg-sky-500/10'
+                        : isToday
+                          ? 'border-sky-400/70 bg-sky-500/5'
+                          : `border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 ${isWeekend ? 'opacity-60' : ''}`
+                    }`}
+                  >
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                      <span className={`text-sm font-semibold ${isToday ? 'text-sky-500 dark:text-sky-400 font-bold' : isWeekend ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}>
+                        {d.getDate()}
+                      </span>
+                      <span className={`text-xs px-1 rounded-full ${dayChats.length > 0 ? (dotColor ? '' : 'bg-emerald-500/20 text-emerald-300') : 'bg-transparent text-transparent'}`} style={dotColor ? { backgroundColor: dotColor + '30', color: dotColor } : undefined}>
+                        {dayChats.length}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-            {(() => {
-              const dayChats = chatsByDay.get(selectedDay) || [];
-              if (dayChats.length === 0) {
-                return <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">No chats on this day.</div>;
-              }
-              return (
-                <div className="space-y-1.5">
-                  {dayChats.map((c) => {
-                    const cat = c.category_id ? catById.get(c.category_id) : null;
-                    const isDragging = dragChatId === c.id;
-                    return (
-                      <button
-                        key={c.id}
-                        draggable
-                        onDragStart={(e) => onDragStartChat(e, c.id)}
-                        onDragEnd={onDragEndChat}
-                        onClick={() => onSelectChat(c.id)}
-                        className={`w-full text-left p-3 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition-all group cursor-grab active:cursor-grabbing ${
-                          isDragging ? 'opacity-30 scale-95' : ''
-                        }`}
-                      >
-                        <div className="flex items-start gap-2">
-                          <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm text-slate-900 dark:text-white font-medium truncate">{c.title}</div>
-                            <div className="flex items-center gap-2 mt-1">
-                              {cat && (
-                                <span
-                                  className="text-[10px] px-1.5 py-0.5 rounded-full border"
-                                  style={{ color: cat.color, borderColor: cat.color + '40', background: cat.color + '10' }}
-                                >
-                                  {cat.name}
-                                </span>
-                              )}
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                                {new Date(c.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
+          {selectedDay && (
+            <div className="h-40 border-t border-slate-200 dark:border-slate-800 flex flex-col bg-slate-100/40 dark:bg-slate-900/40">
+              <div className="h-8 flex items-center justify-between px-3 border-b border-slate-200 dark:border-slate-800">
+                <span className="font-semibold text-slate-900 dark:text-white text-xs">
+                  {new Date(selectedDay).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+                <button onClick={() => setSelectedDay(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2">
+                {(() => {
+                  const dayChats = chatsByDay.get(selectedDay) || [];
+                  if (dayChats.length === 0) return <div className="text-center text-xs text-slate-400 dark:text-slate-500 py-2">No chats</div>;
+                  return (
+                    <div className="space-y-1">
+                      {dayChats.map((c) => (
+                        <button key={c.id} onClick={() => onSelectChat(c.id)} className="w-full text-left p-2 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-200/60 dark:hover:bg-slate-800/60">
+                          <div className="text-sm text-slate-900 dark:text-white truncate">{c.title}</div>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <>
