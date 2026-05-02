@@ -79,16 +79,66 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
   const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, key, 256);
   const computed = [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
-  return computed === hashHex;
+return computed === hashHex;
 }
 
-// ─── Auth middleware ─────────────────────────────────────────────────────────
+// ─── Rate Limiting ───────────────────────────────────────────────────
 
-async function requireAuth(request: Request, env: Env): Promise<{ userId: string; email: string }> {
-  const auth = request.headers.get('Authorization');
-  if (!auth || !auth.startsWith('Bearer ')) throw new Error('Missing token');
-  const payload = await verifyJWT(auth.slice(7), env.JWT_SECRET);
-  return { userId: payload.sub, email: payload.email };
+interface RateLimitConfig {
+  limit: number;
+  windowSec: number;
+}
+
+const RATE_LIMITS: Record<string, RateLimitConfig> = {
+  'signup:ip': { limit: 3, windowSec: 60 },
+  'signin:ip': { limit: 5, windowSec: 60 },
+  'llm:user': { limit: 20, windowSec: 60 },
+  'generate-image:user': { limit: 5, windowSec: 60 },
+  'upload:user': { limit: 10, windowSec: 60 },
+  'web-search:user': { limit: 10, windowSec: 60 },
+};
+
+async function getClientIP(request: Request): Promise<string> {
+  const cfIP = request.headers.get('CF-Connecting-IP');
+  const forwarded = request.headers.get('X-Forwarded-For');
+  return cfIP || forwarded?.split(',')[0]?.trim() || 'unknown';
+}
+
+async function checkRateLimit(
+  env: Env,
+  keyType: string,
+  identifier: string
+): Promise<void> {
+  const config = RATE_LIMITS[keyType];
+  if (!config) return;
+
+  const now = Math.floor(Date.now() / 1000);
+  const windowStart = now - (now % config.windowSec);
+  const key = `${keyType}:${identifier}`;
+
+  const db = env.DB;
+
+  await db.prepare('DELETE FROM rate_limits WHERE window_start < ?').bind(now - config.windowSec).run();
+
+  const existing = await db.prepare('SELECT count FROM rate_limits WHERE key = ? AND window_start = ?').bind(key, windowStart).first<{ count: number }>();
+
+  if (existing) {
+    if (existing.count >= config.limit) {
+      throw new Error('Rate limit exceeded. Please try again later.');
+    }
+    await db.prepare('UPDATE rate_limits SET count = count + 1 WHERE key = ? AND window_start = ?').bind(key, windowStart).run();
+  } else {
+    await db.prepare('INSERT INTO rate_limits (key, count, window_start) VALUES (?, 1, ?)').bind(key, windowStart).run();
+  }
+}
+
+async function parseFormData<T>(request: Request): Promise<T> {
+  const formData = await request.formData();
+  const obj: Record<string, unknown> = {};
+  for (const [key, value] of formData) {
+    obj[key] = value;
+  }
+  return obj as T;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -598,13 +648,17 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const path = url.pathname.replace(/^\/api/, '');
 
   try {
+    const clientIP = await getClientIP(request);
+
     // Auth routes (no token required)
     if (path === '/auth/signup' && request.method === 'POST') {
+      await checkRateLimit(env, 'signup:ip', clientIP);
       const res = await handleAuthSignup(request, env);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
     }
     if (path === '/auth/signin' && request.method === 'POST') {
+      await checkRateLimit(env, 'signin:ip', clientIP);
       const res = await handleAuthSignin(request, env);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
@@ -701,6 +755,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     // LLM Chat
     if (path === '/llm-chat' && request.method === 'POST') {
+      await checkRateLimit(env, 'llm:user', userId);
       const res = await handleLLMChat(request, env);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
@@ -708,6 +763,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     // Image Upload
     if (path === '/upload' && request.method === 'POST') {
+      await checkRateLimit(env, 'upload:user', userId);
       const res = await handleUpload(request, env, userId);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
@@ -715,6 +771,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     // Image Generation
     if (path === '/generate-image' && request.method === 'POST') {
+      await checkRateLimit(env, 'generate-image:user', userId);
       const res = await handleGenerateImage(request, env, userId);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
@@ -750,6 +807,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     // Web Search
     if (path === '/web-search' && request.method === 'POST') {
+      await checkRateLimit(env, 'web-search:user', userId);
       const res = await handleWebSearch(request, env);
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
@@ -759,6 +817,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   } catch (e) {
     if (e instanceof Error && (e.message === 'Missing token' || e.message === 'Invalid token' || e.message === 'Invalid signature' || e.message === 'Token expired')) {
       return error('Unauthorized', 401);
+    }
+    if (e instanceof Error && e.message === 'Rate limit exceeded. Please try again later.') {
+      return error('Rate limit exceeded. Please try again later.', 429);
     }
     console.error(e);
     return error(e instanceof Error ? e.message : 'Internal error', 500);

@@ -22,6 +22,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!res.ok) {
+    if (res.status === 429) {
+      const err = await res.json().catch(() => ({ error: 'Too many requests. Please wait a minute.' }));
+      throw new Error(err.error || 'Too many requests. Please wait a minute.');
+    }
     if (res.status === 401) {
       clearToken();
       window.location.reload();
