@@ -266,6 +266,12 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                   const dayChats = chatsByDay.get(toKey(d)) || [];
                   const isToday = sameDay(d, new Date());
                   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                  const dominantCat = dayChats.length > 0 ? dayChats.reduce((prev, c) => {
+                    const prevCat = prev?.category_id ? catById.get(prev.category_id) : null;
+                    const currCat = c.category_id ? catById.get(c.category_id) : null;
+                    return currCat ? c : prev;
+                  }, dayChats[0])?.category_id : null;
+                  const dotColor = dominantCat && catById.get(dominantCat)?.color;
                   return (
                     <div
                       key={i}
@@ -290,7 +296,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                           <span className={`text-base font-semibold ${isToday ? 'text-sky-500 dark:text-sky-400 font-bold' : isWeekend ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}>
                             {d.getDate()}
                           </span>
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${dayChats.length > 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-transparent text-transparent'}`}>
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${dayChats.length > 0 ? (dotColor ? '' : 'bg-emerald-500/20 text-emerald-300') : 'bg-transparent text-transparent'}`} style={dotColor ? { backgroundColor: dotColor + '30', color: dotColor } : undefined}>
                             {dayChats.length}
                           </span>
                         </div>
