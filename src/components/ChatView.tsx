@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil, Share2, FileText, Globe } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Hash, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil, Share2, FileText, Globe, Mic } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm, upload, generate, share, webSearch } from '../lib/api';
 import { useMode } from '../contexts/ModeContext';
 import { marked, Renderer } from 'marked';
@@ -60,6 +60,48 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [genPrompt, setGenPrompt] = useState('');
   const [genLoading, setGenLoading] = useState(false);
   const [genSize, setGenSize] = useState<'1024x1024' | '1792x1024' | '1024x1792'>('1024x1024');
+  const [voiceListening, setVoiceListening] = useState(false);
+  const voiceRecRef = useRef<SpeechRecognition | null>(null);
+  const voiceSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  useEffect(() => {
+    if (!voiceSupported) return;
+    const SpeechRecognition = (window as Record<string, unknown>).SpeechRecognition || (window as Record<string, unknown>).webkitSpeechRecognition;
+    const rec = new (SpeechRecognition as new () => SpeechRecognition)();
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.lang = 'en-US';
+
+    rec.onresult = (event: SpeechRecognitionEvent) => {
+      let final = '';
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const r = event.results[i];
+        if (r.isFinal) final += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      setInput((prev) => {
+        if (final) return (prev + ' ' + final).trim();
+        return (prev + ' ' + interim).trim();
+      });
+    };
+
+    rec.onend = () => setVoiceListening(false);
+    rec.onerror = () => setVoiceListening(false);
+
+    voiceRecRef.current = rec;
+  }, []);
+
+  function toggleVoice() {
+    if (!voiceRecRef.current) return;
+    if (voiceListening) {
+      voiceRecRef.current.stop();
+      setVoiceListening(false);
+    } else {
+      voiceRecRef.current.start();
+      setVoiceListening(true);
+    }
+  }
   const [shareModal, setShareModal] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -803,6 +845,19 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
                     <Globe className="w-4 h-4" />
                   </button>
                 </>
+              )}
+              {voiceSupported && (
+                <button
+                  onClick={toggleVoice}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                    voiceListening
+                      ? 'bg-red-500 text-white animate-pulse'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-red-400 dark:hover:text-red-400 hover:bg-slate-300/40 dark:hover:bg-slate-700/40'
+                  }`}
+                  title={voiceListening ? 'Stop listening' : 'Voice input'}
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
               )}
               <button
                 onClick={sendMessage}
