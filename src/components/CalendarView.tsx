@@ -151,11 +151,12 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                 >
                   <div className="flex items-center justify-between">
                     <span
-                      className={`text-xs font-medium ${
+                      className={`text-xs font-medium flex items-center gap-1 ${
                         isToday ? 'text-sky-400' : 'text-slate-600 dark:text-slate-300'
                       }`}
                     >
                       {d.getDate()}
+                      {isToday && <span className="w-1.5 h-1.5 bg-sky-400 rotate-45 inline-block rounded-sm" />}
                     </span>
                     {dayChats.length > 0 && (
                       <span className="text-[10px] px-1.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium">

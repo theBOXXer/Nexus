@@ -63,6 +63,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [voiceListening, setVoiceListening] = useState(false);
   const voiceRecRef = useRef<SpeechRecognition | null>(null);
   const voiceSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+  const voiceBaseRef = useRef('');
 
   useEffect(() => {
     if (!voiceSupported) return;
@@ -73,17 +74,11 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     rec.lang = 'en-US';
 
     rec.onresult = (event: SpeechRecognitionEvent) => {
-      let final = '';
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const r = event.results[i];
-        if (r.isFinal) final += r[0].transcript;
-        else interim += r[0].transcript;
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
       }
-      setInput((prev) => {
-        if (final) return (prev + ' ' + final).trim();
-        return (prev + ' ' + interim).trim();
-      });
+      setInput((voiceBaseRef.current + ' ' + transcript).trim());
     };
 
     rec.onend = () => setVoiceListening(false);
@@ -98,6 +93,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
       voiceRecRef.current.stop();
       setVoiceListening(false);
     } else {
+      voiceBaseRef.current = input;
       voiceRecRef.current.start();
       setVoiceListening(true);
     }
@@ -114,7 +110,6 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
   const [searchResults, setSearchResults] = useState<string | null>(null);
   const [viewerImg, setViewerImg] = useState<{ src: string; alt: string } | null>(null);
 
-  useEffect(() => {
   async function handleSearch() {
     if (!searchQuery.trim() || searchLoading) return;
     setSearchLoading(true);
@@ -129,7 +124,8 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally 
     }
   }
 
-  if (!chat) {
+  useEffect(() => {
+    if (!chat) {
       setMsgs([]);
       return;
     }
