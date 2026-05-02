@@ -177,7 +177,9 @@ export default function FolderView({ chats: allChats, categories: catsList, onSe
                   onDragLeave={b.id ? () => setDragOverCat(null) : undefined}
                   onDrop={b.id ? (e) => onDropCat(e, idx) : undefined}
                   onClick={b.id ? () => toggleCollapse(b.id) : undefined}
-                  className={`p-4 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center gap-3 transition-colors ${
+                  className={`p-4 flex items-center gap-3 transition-colors ${
+                    collapsed.has(b.id) ? '' : 'border-b border-slate-200/60 dark:border-slate-800/60'
+                  } ${
                     catActive ? 'bg-emerald-500/10' : ''
                   } ${b.id ? 'cursor-pointer' : ''}`}
                 >
