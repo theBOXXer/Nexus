@@ -176,7 +176,11 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                           onDragEnd={onDragEndChat}
                           onClick={(e) => {
                             e.stopPropagation();
-                            onSelectChat(c.id);
+                            if (isMobile) {
+                              setSelectedDay(toKey(d));
+                            } else {
+                              onSelectChat(c.id);
+                            }
                           }}
                           className={`text-[10px] truncate px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 flex items-center gap-1 transition-all cursor-grab active:cursor-grabbing ${
                             isDragging ? 'opacity-30 scale-95' : ''
