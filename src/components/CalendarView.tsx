@@ -274,69 +274,82 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                       onDragLeave={() => setDragOverDay(null)}
                       onDrop={(e) => onDropChatOnDay(e, d)}
                       onClick={() => setSelectedDay(selectedDay === toKey(d) ? null : toKey(d))}
-                      className={`aspect-[1/1.15] md:aspect-square rounded-lg border p-1.5 md:p-2 flex flex-col cursor-pointer transition-all relative ${
+                      className={`${isMobile ? 'aspect-[1/1.15]' : 'aspect-square'} rounded-lg border p-2 flex flex-col cursor-pointer transition-all relative ${
                         dragOverDay === toKey(d)
                           ? 'border-emerald-500/60 bg-emerald-500/10 scale-[1.03] shadow-lg shadow-emerald-500/10'
                           : selectedDay === toKey(d)
                             ? 'border-sky-500/60 bg-sky-500/10'
                             : isToday
-                              ? 'border-sky-400/70 bg-sky-500/5 md:shadow-[0_0_14px_rgba(56,189,248,0.25)] md:ring-1 md:ring-sky-400/30'
+                              ? 'border-sky-400/70 bg-sky-500/5 shadow-[0_0_14px_rgba(56,189,248,0.25)] ring-1 ring-sky-400/30'
                               : 'border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
                       }`}
                     >
-                      <div className="flex-1 flex flex-col items-center justify-center">
-                        <span
-                          className={`text-base md:text-xs font-semibold md:font-medium ${
-                            isToday ? 'text-sky-500 dark:text-sky-400 font-bold' : 'text-slate-600 dark:text-slate-300'
-                          }`}
-                        >
-                          {d.getDate()}
-                        </span>
-                        <span className="hidden md:block text-[10px] px-1.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium">
-                          {dayChats.length}
-                        </span>
-                      </div>
-                      <div className="hidden md:flex mt-1 space-y-0.5 overflow-hidden">
-                        {dayChats.slice(0, 2).map((c) => {
-                          const cat = c.category_id ? catById.get(c.category_id) : null;
-                          const isDragging = dragChatId === c.id;
-                          return (
-                            <div
-                              key={c.id}
-                              draggable
-                              onDragStart={(e) => onDragStartChat(e, c.id)}
-                              onDragEnd={onDragEndChat}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isMobile) {
-                                  setSelectedDay(toKey(d));
-                                } else {
-                                  onSelectChat(c.id);
-                                }
-                              }}
-                              className={`text-[10px] truncate px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 flex items-center gap-1 transition-all cursor-grab active:cursor-grabbing ${
-                                isDragging ? 'opacity-30 scale-95' : ''
-                              }`}
-                            >
-                              {cat && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cat.color }} />}
-                              <span className="truncate">{c.title}</span>
-                            </div>
-                          );
-                        })}
-                        {dayChats.length > 2 && (
-                          <div className="text-[10px] text-slate-400 dark:text-slate-500 px-1.5">+{dayChats.length - 2} more</div>
-                        )}
-                      </div>
+                      {isMobile ? (
+                        <div className="flex-1 flex flex-col items-center justify-center">
+                          <span className={`text-base font-semibold ${isToday ? 'text-sky-500 dark:text-sky-400 font-bold' : 'text-slate-600 dark:text-slate-300'}`}>
+                            {d.getDate()}
+                          </span>
+                          {dayChats.length > 0 && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium">
+                              {dayChats.length}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className={`text-xs font-medium ${isToday ? 'text-sky-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                              {isToday ? 'Today' : d.getDate()}
+                            </span>
+                            {dayChats.length > 0 && (
+                              <span className="text-[10px] px-1.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium">
+                                {dayChats.length}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 space-y-0.5 overflow-hidden">
+                            {dayChats.slice(0, 2).map((c) => {
+                              const cat = c.category_id ? catById.get(c.category_id) : null;
+                              const isDragging = dragChatId === c.id;
+                              return (
+                                <div
+                                  key={c.id}
+                                  draggable
+                                  onDragStart={(e) => onDragStartChat(e, c.id)}
+                                  onDragEnd={onDragEndChat}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isMobile) {
+                                      setSelectedDay(toKey(d));
+                                    } else {
+                                      onSelectChat(c.id);
+                                    }
+                                  }}
+                                  className={`text-[10px] truncate px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 flex items-center gap-1 transition-all cursor-grab active:cursor-grabbing ${
+                                    isDragging ? 'opacity-30 scale-95' : ''
+                                  }`}
+                                >
+                                  {cat && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cat.color }} />}
+                                  <span className="truncate">{c.title}</span>
+                                </div>
+                              );
+                            })}
+                            {dayChats.length > 2 && (
+                              <div className="text-[10px] text-slate-400 dark:text-slate-500 px-1.5">+{dayChats.length - 2} more</div>
+                            )}
+                          </div>
+                        </>
+                      )}
                       {hoveredDay === toKey(d) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             onNewChat(d);
                           }}
-                          className="absolute bottom-1 right-1 md:bottom-1.5 md:right-1.5 w-5 h-5 md:w-6 md:h-6 rounded-md bg-sky-500/20 hover:bg-sky-500/40 text-sky-300 hover:text-sky-200 border border-sky-500/30 flex items-center justify-center transition-all"
+                          className={`absolute ${isMobile ? 'bottom-1 right-1 w-5 h-5' : 'bottom-1.5 right-1.5 w-6 h-6'} rounded-md bg-sky-500/20 hover:bg-sky-500/40 text-sky-300 hover:text-sky-200 border border-sky-500/30 flex items-center justify-center transition-all`}
                           title="New chat on this date"
                         >
-                          <Plus className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                          <Plus className={isMobile ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
                         </button>
                       )}
                     </div>
