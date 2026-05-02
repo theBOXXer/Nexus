@@ -265,6 +265,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                   if (!d) return <div key={i} className="aspect-square" />;
                   const dayChats = chatsByDay.get(toKey(d)) || [];
                   const isToday = sameDay(d, new Date());
+                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                   return (
                     <div
                       key={i}
@@ -281,12 +282,12 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                             ? 'border-sky-500/60 bg-sky-500/10'
                             : isToday
                               ? 'border-sky-400/70 bg-sky-500/5 shadow-[0_0_14px_rgba(56,189,248,0.25)] ring-1 ring-sky-400/30'
-                              : 'border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                              : `border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 ${isWeekend ? 'opacity-60' : ''}`
                       }`}
                     >
                       {isMobile ? (
                         <div className="flex-1 flex flex-col items-center justify-center">
-                          <span className={`text-base font-semibold ${isToday ? 'text-sky-500 dark:text-sky-400 font-bold' : 'text-slate-600 dark:text-slate-300'}`}>
+                          <span className={`text-base font-semibold ${isToday ? 'text-sky-500 dark:text-sky-400 font-bold' : isWeekend ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}>
                             {d.getDate()}
                           </span>
                           {dayChats.length > 0 && (
@@ -298,7 +299,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                       ) : (
                         <>
                           <div className="flex items-center justify-between">
-                            <span className={`text-xs font-medium ${isToday ? 'text-sky-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                            <span className={`text-xs font-medium ${isToday ? 'text-sky-400' : isWeekend ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}>
                               {isToday ? 'Today' : d.getDate()}
                             </span>
                             {dayChats.length > 0 && (
