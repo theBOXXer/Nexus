@@ -474,6 +474,16 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally,
 
   const currentModel = allModels.find((m) => m.id === chat.model);
 
+  const browseModal = showBrowse ? (
+    <BrowseFreeModels
+      onClose={() => setShowBrowse(false)}
+      onSelectModel={(modelId) => {
+        changeModel(modelId);
+        setShowBrowse(false);
+      }}
+    />
+  ) : null;
+
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 min-w-0 min-h-0" onDragOver={handleDragOver} onDrop={handleDrop} onPaste={handlePaste}>
       <div className="h-14 border-b border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-5 bg-slate-100/40 dark:bg-slate-900/40 backdrop-blur">
@@ -1064,15 +1074,7 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit, onViewImag
           </div>
         )}
       </div>
-      {showBrowse ? (
-        <BrowseFreeModels
-          onClose={() => setShowBrowse(false)}
-          onSelectModel={(modelId) => {
-            changeModel(modelId);
-            setShowBrowse(false);
-          }}
-        />
-      ) : null}
+      {browseModal}
     </div>
   );
 }
