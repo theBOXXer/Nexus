@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight, MessageSquare, Plus, X, ArrowLeft } from 'lucide-react';
 import { Chat, Category, chats as chatsApi } from '../lib/api';
 
@@ -43,6 +43,8 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
   const [dragChatId, setDragChatId] = useState<string | null>(null);
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const touchStartX = useRef<number | null>(null);
+  const [slideDir, setSlideDir] = useState<'left' | 'right' | null>(null);
 
   const allChats = useMemo(() => {
     return [...chats].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -134,11 +136,61 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
     setCurrentDate(new Date());
   }
 
+  function handleNav(dir: 'prev' | 'next') {
+    setSlideDir(dir === 'next' ? 'left' : 'right');
+    if (dir === 'next') {
+      if (viewMode === 'month') {
+        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+      } else {
+        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 7));
+      }
+    } else {
+      if (viewMode === 'month') {
+        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+      } else {
+        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 7));
+      }
+    }
+  }
+
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (dx < -50) handleNav('next');
+    if (dx > 50) handleNav('prev');
+    touchStartX.current = null;
+  }
+
   return (
     <div className="flex-1 flex bg-white dark:bg-slate-950 overflow-hidden min-h-0">
-      {isMobile && selectedDay && viewMode === 'month' ? (
+      {isMobile && viewMode === 'month' ? (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-auto p-2">
+          <div className="h-10 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-2 bg-slate-100/40 dark:bg-slate-900/40">
+            <div className="flex items-center gap-1">
+              <button onClick={() => handleNav('prev')} className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <div className="text-xs font-medium text-slate-900 dark:text-white min-w-[70px] text-center">{dateLabel}</div>
+              <button onClick={() => handleNav('next')} className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setViewMode('month')} className={`px-1.5 py-0.5 text-xs font-medium rounded ${viewMode === 'month' ? 'bg-sky-500 text-white' : 'text-slate-600 dark:text-slate-300'}`}>Month</button>
+              <button onClick={() => setViewMode('week')} className={`px-1.5 py-0.5 text-xs font-medium rounded ${viewMode === 'week' ? 'bg-sky-500 text-white' : 'text-slate-600 dark:text-slate-300'}`}>Week</button>
+              <button onClick={goToToday} className="px-1.5 py-0.5 text-xs font-medium rounded text-slate-600 dark:text-slate-300">Today</button>
+            </div>
+          </div>
+          <div 
+            className={`flex-1 overflow-auto max-h-[50%] p-2 ${slideDir === 'left' ? 'calendar-slide-left' : slideDir === 'right' ? 'calendar-slide-right' : ''}`}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+            onAnimationEnd={() => setSlideDir(null)}
+          >
             {(viewMode === 'month' || !isMobile) && (
               <div className="grid grid-cols-7 gap-1 mb-1">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
@@ -186,8 +238,8 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
             </div>
           </div>
           {selectedDay && (
-            <div className="h-40 border-t border-slate-200 dark:border-slate-800 flex flex-col bg-slate-100/40 dark:bg-slate-900/40">
-              <div className="h-8 flex items-center justify-between px-3 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex-1 border-t border-slate-200 dark:border-slate-800 flex flex-col bg-slate-100/40 dark:bg-slate-900/40 min-h-0">
+              <div className="h-8 flex items-center justify-between px-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
                 <span className="font-semibold text-slate-900 dark:text-white text-xs">
                   {new Date(selectedDay).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
@@ -195,17 +247,20 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-2">
+              <div className="flex-1 overflow-y-auto p-2 min-h-0">
                 {(() => {
                   const dayChats = chatsByDay.get(selectedDay) || [];
                   if (dayChats.length === 0) return <div className="text-center text-xs text-slate-400 dark:text-slate-500 py-2">No chats</div>;
                   return (
                     <div className="space-y-1">
-                      {dayChats.map((c) => (
-                        <button key={c.id} onClick={() => onSelectChat(c.id)} className="w-full text-left p-2 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-200/60 dark:hover:bg-slate-800/60">
-                          <div className="text-sm text-slate-900 dark:text-white truncate">{c.title}</div>
-                        </button>
-                      ))}
+                      {dayChats.map((c) => {
+                        const cat = c.category_id ? catById.get(c.category_id) : null;
+                        return (
+                          <button key={c.id} onClick={() => onSelectChat(c.id)} className="w-full text-left p-2 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-200/60 dark:hover:bg-slate-800/60">
+                            <div className="text-sm font-medium truncate" style={{ color: cat?.color || undefined }}>{c.title}</div>
+                          </button>
+                        );
+                      })}
                     </div>
                   );
                 })()}
@@ -345,9 +400,8 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                                       onSelectChat(c.id);
                                     }
                                   }}
-                                  className={`text-[10px] truncate px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 flex items-center gap-1 transition-all cursor-grab active:cursor-grabbing ${
-                                    isDragging ? 'opacity-30 scale-95' : ''
-                                  }`}
+                                  className={`text-[10px] truncate px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800/80 hover:bg-slate-300 dark:hover:bg-slate-700 flex items-center gap-1 transition-all cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30 scale-95' : ''}`}
+                                  style={{ color: cat?.color || undefined }}
                                 >
                                   {cat && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cat.color }} />}
                                   <span className="truncate">{c.title}</span>
@@ -377,7 +431,12 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                 })}
               </div>
             ) : isMobile ? (
-              <div className="flex-1 overflow-y-auto space-y-3 p-3">
+              <div 
+                className={`flex-1 overflow-y-auto space-y-3 p-3 ${slideDir === 'left' ? 'calendar-slide-left' : slideDir === 'right' ? 'calendar-slide-right' : ''}`}
+                onTouchStart={onTouchStart}
+                onTouchEnd={onTouchEnd}
+                onAnimationEnd={() => setSlideDir(null)}
+              >
                 {weekCells.map((d) => {
                   const dayChats = chatsByDay.get(toKey(d)) || [];
                   const isToday = sameDay(d, new Date());
@@ -406,7 +465,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                                 <div className="flex items-start gap-2">
                                   <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 mt-0.5 flex-shrink-0" />
                                   <div className="flex-1 min-w-0">
-                                    <div className="text-sm text-slate-900 dark:text-white font-medium truncate">{c.title}</div>
+<div className="text-sm font-medium truncate" style={{ color: cat?.color || undefined }}>{c.title}</div>
                                     <div className="flex items-center gap-2 mt-1">
                                       {cat && (
                                         <span
@@ -487,9 +546,10 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                                 e.stopPropagation();
                                 onSelectChat(c.id);
                               }}
-                              className={`text-xs truncate px-2 py-1.5 rounded bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 flex items-center gap-1.5 transition-all cursor-grab active:cursor-grabbing ${
+                              className={`text-xs truncate px-2 py-1.5 rounded bg-slate-200/80 dark:bg-slate-800/80 hover:bg-slate-300 dark:hover:bg-slate-700 flex items-center gap-1.5 transition-all cursor-grab active:cursor-grabbing ${
                                 isDragging ? 'opacity-30 scale-95' : ''
                               }`}
+                              style={{ color: cat?.color || undefined }}
                             >
                               {cat && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cat.color }} />}
                               <span className="truncate">{c.title}</span>
@@ -556,7 +616,7 @@ export default function CalendarView({ chats, categories, onSelectChat, onNewCha
                           <div className="flex items-start gap-2">
                             <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 mt-0.5 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm text-slate-900 dark:text-white font-medium truncate">{c.title}</div>
+                              <div className="text-sm font-medium truncate" style={{ color: cat?.color || undefined }}>{c.title}</div>
                               <div className="flex items-center gap-2 mt-1">
                                 {cat && (
                                   <span

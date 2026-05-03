@@ -18,9 +18,10 @@ export default function Auth({ onAuth }: Props) {
     setError(null);
     setLoading(true);
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const res = mode === 'signin'
-        ? await auth.signIn(email, password)
-        : await auth.signUp(email, password);
+        ? await auth.signIn(normalizedEmail, password)
+        : await auth.signUp(normalizedEmail, password);
       setToken(res.token);
       onAuth(res.user.id, res.user.email);
     } catch (err) {

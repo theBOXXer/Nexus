@@ -1,15 +1,64 @@
 const API_BASE = '/api';
+const TOKEN_KEY = 'nexus_token';
+
+function safeGetItem(storage: Storage, key: string): string | null {
+  try {
+    return storage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetItem(storage: Storage, key: string, value: string): boolean {
+  try {
+    storage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getCookieToken(): string | null {
+  try {
+    const match = document.cookie.match(new RegExp('(^| )' + TOKEN_KEY + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setCookieToken(token: string) {
+  try {
+    document.cookie = `${TOKEN_KEY}=${encodeURIComponent(token)};path=/;max-age=31536000;SameSite=Lax`;
+  } catch {}
+}
+
+function clearCookieToken() {
+  try {
+    document.cookie = `${TOKEN_KEY}=;path=/;max-age=0;SameSite=Lax`;
+  } catch {}
+}
 
 function getToken(): string | null {
-  return localStorage.getItem('nexus_token');
+  return (
+    safeGetItem(localStorage, TOKEN_KEY) ||
+    safeGetItem(sessionStorage, TOKEN_KEY) ||
+    getCookieToken()
+  );
 }
 
 export function setToken(token: string) {
-  localStorage.setItem('nexus_token', token);
+  if (!safeSetItem(localStorage, TOKEN_KEY, token)) {
+    if (!safeSetItem(sessionStorage, TOKEN_KEY, token)) {
+      setCookieToken(token);
+    }
+  }
 }
 
 export function clearToken() {
-  localStorage.removeItem('nexus_token');
+  try { localStorage.removeItem(TOKEN_KEY); } catch {}
+  try { sessionStorage.removeItem(TOKEN_KEY); } catch {}
+  clearCookieToken();
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -99,12 +148,14 @@ export type Message = {
 
 export const auth = {
   signUp: (email: string, password: string) =>
-    post<{ token: string; user: { id: string; email: string } }>('/auth/signup', { email, password }),
+    post<{ token: string; user: { id: string; email: string } }>('/auth/signup', { email, password }, { cache: 'no-store' }),
   signIn: (email: string, password: string) =>
-    post<{ token: string; user: { id: string; email: string } }>('/auth/signin', { email, password }),
+    post<{ token: string; user: { id: string; email: string } }>('/auth/signin', { email, password }, { cache: 'no-store' }),
   me: () => get<{ id: string; email: string }>('/auth/me'),
   signOut: () => { clearToken(); },
   getToken,
+  changePassword: (currentPassword: string, newPassword: string) =>
+    put<{ success: boolean }>('/auth/password', { currentPassword, newPassword }),
 };
 
 export const categories = {
@@ -152,7 +203,60 @@ export const upload = {
 
 export const llm = {
   chat: (model: string, msgs: { role: string; content: string; images?: string[] }[], size?: string) =>
-    post<{ content: string; images?: string[] }>('/llm-chat', { model, messages: msgs, size }),
+    post<{ content: string; images?: string[] }>('/llm-chat', { model, messages: msgs, size, stream: false }),
+  chatStream: (
+    model: string,
+    msgs: { role: string; content: string; images?: string[] }[],
+    callbacks: { onToken: (token: string) => void; onDone: (fullContent: string) => void; onError: (err: Error) => void },
+    size?: string,
+    signal?: AbortSignal,
+  ) => {
+    const token = getToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    fetch(`${API_BASE}/llm-chat`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ model, messages: msgs, size }),
+      signal,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || 'Request failed');
+      }
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No readable stream');
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') { callbacks.onDone(fullContent); return; }
+          try {
+            const parsed = JSON.parse(data);
+            const token = parsed.choices?.[0]?.delta?.content;
+            if (token) {
+              fullContent += token;
+              callbacks.onToken(token);
+            }
+          } catch { /* ignore parse errors */ }
+        }
+      }
+      callbacks.onDone(fullContent);
+    }).catch((err) => {
+      if (err.name !== 'AbortError') callbacks.onError(err);
+    });
+  },
 };
 
 export const generate = {

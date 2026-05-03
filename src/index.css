@@ -92,3 +92,14 @@ html.light .markdown-content blockquote {
 html.light .markdown-content a { color: rgb(3 105 161); }
 .markdown-content hr { border-color: rgb(51 65 85); margin: 1rem 0; }
 html.light .markdown-content hr { border-color: rgb(203 213 225); }
+
+@keyframes slideInFromRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes slideInFromLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+.calendar-slide-left  { animation: slideInFromRight 0.25s ease-out; }
+.calendar-slide-right { animation: slideInFromLeft  0.25s ease-out; }

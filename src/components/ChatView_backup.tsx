@@ -1,9 +1,7 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil, Share2, FileText, Globe, Mic, Plus, ArrowLeft, Square } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Send, Bot, User, Sparkles, Loader2, Copy, Check, CalendarDays, ImagePlus, X, Trash2, Pencil, Share2, FileText, Globe, Mic, Plus, ArrowLeft } from 'lucide-react';
 import { Chat, Message, Category, MODELS, messages, chats, llm, upload, generate, share, webSearch } from '../lib/api';
 import { useMode } from '../contexts/ModeContext';
-import { useModels } from '../contexts/ModelsContext';
-import BrowseFreeModels from './BrowseFreeModels';
 import { marked, Renderer } from 'marked';
 import { extractFromFile, getSupportedTypes, getDocPreviewText, ExtractionResult } from '../lib/fileExtraction';
 import ImageViewer from './ImageViewer';
@@ -69,12 +67,6 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally,
   const voiceRecRef = useRef<SpeechRecognition | null>(null);
   const voiceSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
   const voiceBaseRef = useRef('');
-  const [streamingContent, setStreamingContent] = useState('');
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
-  const streamingRef = useRef(false);
-  const [showBrowse, setShowBrowse] = useState(false);
-  const { customModels } = useModels();
-  const allModels = useMemo(() => [...MODELS, ...customModels], [customModels]);
 
   useEffect(() => {
     if (!voiceSupported) return;
@@ -472,7 +464,7 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally,
     );
   }
 
-  const currentModel = allModels.find((m) => m.id === chat.model);
+  const currentModel = MODELS.find((m) => m.id === chat.model);
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 min-w-0 min-h-0" onDragOver={handleDragOver} onDrop={handleDrop} onPaste={handlePaste}>
@@ -552,19 +544,12 @@ export default function ChatView({ chat, category, onRefresh, updateChatLocally,
           onChange={(e) => changeModel(e.target.value)}
           className="bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
         >
-          {allModels.map((m) => (
+          {MODELS.map((m) => (
             <option key={m.id} value={m.id}>
               {mode === 'professional' ? `${m.provider} — ${m.label}` : mode === 'intermediate' ? m.simpleLabel : m.beginnerLabel}
             </option>
           ))}
         </select>
-        <button
-          onClick={() => setShowBrowse(true)}
-          className="px-3 py-1.5 text-sm bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
-          title="Browse free models"
-        >
-          Browse
-        </button>
         <button
           onClick={handleShare}
           className="w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:text-sky-400 dark:hover:text-sky-400 flex items-center justify-center hover:bg-slate-300/40 dark:hover:bg-slate-700/40 transition-colors"
@@ -1064,15 +1049,6 @@ function MessageBubble({ message, onHover, onLeave, onDelete, onEdit, onViewImag
           </div>
         )}
       </div>
-      {showBrowse ? (
-        <BrowseFreeModels
-          onClose={() => setShowBrowse(false)}
-          onSelectModel={(modelId) => {
-            changeModel(modelId);
-            setShowBrowse(false);
-          }}
-        />
-      ) : null}
     </div>
   );
 }
