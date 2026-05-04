@@ -1,9 +1,10 @@
 interface Env {
-  DB: { prepare(sql: string): { bind(...args: unknown[]): { run(): Promise<{ changes: number }>; first<T>(): Promise<T | null>; all<T>(): Promise<{ results: T[] }> } } };
+  DB: { prepare(sql: string): { bind(...args: unknown[]): { run(): Promise<{ changes: number }>; first<T>(): Promise<T | null>; all<T>(): Promise<{ results: T[] }> } };
   JWT_SECRET: string;
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
+  OPENROUTER_API_KEY?: string;
   IMAGES?: { put(key: string, value: ArrayBuffer | ReadableStream, options?: { httpMetadata?: { contentType?: string } }): Promise<{ key: string } | null>; get(key: string): Promise<{ body: ReadableStream } | null> };
   GOOGLE_API_KEY?: string;
   GOOGLE_CX?: string;
@@ -377,7 +378,7 @@ async function handleUpload(req: Request, env: Env, _userId: string): Promise<Re
 
 // ─── LLM Chat ────────────────────────────────────────────────────────────────
 
-const MODEL_MAP: Record<string, 'openai' | 'anthropic' | 'deepseek'> = {
+const MODEL_MAP: Record<string, 'openai' | 'anthropic' | 'deepseek' | 'openrouter'> = {
   'gpt-4o': 'openai', 'gpt-4o-mini': 'openai', 'gpt-4-turbo': 'openai', 'gpt-3.5-turbo': 'openai',
   'claude-opus-4-7': 'anthropic', 'claude-opus-4-6': 'anthropic',
   'claude-sonnet-4-6': 'anthropic', 'claude-sonnet-4-5': 'anthropic',
@@ -388,13 +389,15 @@ const MODEL_MAP: Record<string, 'openai' | 'anthropic' | 'deepseek'> = {
 };
 
 async function handleLLMChat(req: Request, env: Env): Promise<Response> {
-  const { model, messages, size } = await req.json() as { model?: string; messages?: { role: string; content: string; images?: string[] }[]; size?: string };
+  const { model, messages, size, stream } = await req.json() as { model?: string; messages?: { role: string; content: string; images?: string[] }[]; size?: string; stream?: boolean };
   if (!model || !messages) return error('model and messages required');
 
-  const provider = MODEL_MAP[model];
+  let provider = MODEL_MAP[model];
+  if (!provider && model.includes('/')) provider = 'openrouter';
   if (!provider) return error(`Unsupported model: ${model}`);
 
   const hasImages = messages.some((m) => m.images && m.images.length > 0);
+  const shouldStream = stream !== false;
 
   if (model === 'dall-e-3') {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
@@ -460,9 +463,32 @@ async function handleLLMChat(req: Request, env: Env): Promise<Response> {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model, messages }),
+      body: JSON.stringify({ model, messages, stream: shouldStream }),
     });
     if (!res.ok) return error(`DeepSeek: ${await res.text()}`, 502);
+    if (shouldStream) {
+      return new Response(res.body, {
+        headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' },
+      });
+    }
+    const data = await res.json() as { choices: { message: { content: string } }[] };
+    return json({ content: data.choices[0].message.content });
+  }
+
+  if (provider === 'openrouter') {
+    const key = env.OPENROUTER_API_KEY;
+    if (!key) return error('OPENROUTER_API_KEY not configured', 500);
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://nexus-5fj.pages.dev', 'X-Title': 'Nexus' },
+      body: JSON.stringify({ model, messages, stream: shouldStream }),
+    });
+    if (!res.ok) return error(`OpenRouter: ${await res.text()}`, 502);
+    if (shouldStream) {
+      return new Response(res.body, {
+        headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+      });
+    }
     const data = await res.json() as { choices: { message: { content: string } }[] };
     return json({ content: data.choices[0].message.content });
   }
