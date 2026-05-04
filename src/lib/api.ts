@@ -292,6 +292,12 @@ export const MODELS = [
   { id: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku', provider: 'Anthropic', simpleLabel: 'C-Hk $', beginnerLabel: 'Claude ★' },
   { id: 'deepseek-chat', label: 'DeepSeek V3', provider: 'DeepSeek', simpleLabel: 'D-V3 $', beginnerLabel: 'DeepSeek ★' },
   { id: 'deepseek-reasoner', label: 'DeepSeek R1', provider: 'DeepSeek', simpleLabel: 'D-R1 $$', beginnerLabel: 'DeepSeek ★★' },
+  // OpenRouter free models
+  { id: 'meta-llama/llama-3.1-8b-instruct:free', label: 'Llama 3.1 8B', provider: 'OpenRouter', simpleLabel: 'L3.1-8B FREE', beginnerLabel: '🦙 FREE' },
+  { id: 'google/gemma-2-9b-it:free', label: 'Gemma 2 9B', provider: 'OpenRouter', simpleLabel: 'G2-9B FREE', beginnerLabel: '💎 FREE' },
+  { id: 'mistralai/mistral-7b-instruct:free', label: 'Mistral 7B', provider: 'OpenRouter', simpleLabel: 'M-7B FREE', beginnerLabel: '🌀 FREE' },
+  { id: 'qwen/qwen-2-7b-instruct:free', label: 'Qwen 2 7B', provider: 'OpenRouter', simpleLabel: 'Q2-7B FREE', beginnerLabel: '🔮 FREE' },
+  { id: 'databricks/dbrx-instruct:free', label: 'DBRX', provider: 'OpenRouter', simpleLabel: 'DBRX FREE', beginnerLabel: '🦄 FREE' },
   { id: 'dall-e-3', label: 'DALL-E 3', provider: 'OpenAI', simpleLabel: 'O-D3 $$', beginnerLabel: 'DALL-E ★★' },
   { id: 'none', label: 'Notes (No AI)', provider: 'Local', simpleLabel: 'Notes', beginnerLabel: 'Notes' },
 ] as const;
